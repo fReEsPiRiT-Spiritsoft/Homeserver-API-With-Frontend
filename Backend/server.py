@@ -29,12 +29,22 @@ DNS_FILE = 'data/dns_entries.json'
 WEBSPACE_FILE = 'data/webspaces.json'
 GAMESERVER_FILE = 'data/gameservers.json'
 
-# Gameserver directories
-GAMESERVER_BASE_DIR = '/opt/gameservers'
+# Gameserver directories - uses local directory by default
+# For production, create /opt/gameservers and set permissions, then change this path
+GAMESERVER_BASE_DIR = os.path.join(os.getcwd(), 'gameservers')
 
 # Ensure directories exist
 os.makedirs('data', exist_ok=True)
-os.makedirs(GAMESERVER_BASE_DIR, exist_ok=True)
+try:
+    os.makedirs(GAMESERVER_BASE_DIR, exist_ok=True)
+    print(f"✓ Gameserver-Verzeichnis erstellt: {GAMESERVER_BASE_DIR}")
+except PermissionError:
+    print(f"⚠️  WARNUNG: Keine Berechtigung für {GAMESERVER_BASE_DIR}")
+    print(f"   Erstelle das Verzeichnis manuell mit: sudo mkdir -p {GAMESERVER_BASE_DIR} && sudo chown $USER:$USER {GAMESERVER_BASE_DIR}")
+    # Try fallback to current directory
+    GAMESERVER_BASE_DIR = os.path.join(os.getcwd(), 'gameservers')
+    os.makedirs(GAMESERVER_BASE_DIR, exist_ok=True)
+    print(f"   Fallback: Verwende {GAMESERVER_BASE_DIR}")
 
 # Initialize data files if they don't exist
 for file in [DNS_FILE, WEBSPACE_FILE, GAMESERVER_FILE]:

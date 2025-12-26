@@ -5,6 +5,13 @@ const API_BASE = 'http://192.168.0.205:5000/api';
 let sshSessionId = null;
 let sshConnected = false;
 
+// System Status Tracking
+let systemOnline = true;
+let lastSuccessfulRequest = Date.now();
+let consecutiveFailures = 0;
+const MAX_TIMEOUT = 10000; // 10 seconds timeout for requests
+const OFFLINE_THRESHOLD = 15000; // 15 seconds without response = offline
+
 // Navigation
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize navigation
@@ -40,37 +47,121 @@ document.addEventListener('DOMContentLoaded', () => {
     loadServices();
     loadGameservers();
     
-    // Auto-refresh every 5 seconds
+    // Auto-refresh every 3 seconds (optimal balance)
     setInterval(() => {
         loadSystemStats();
         loadServices();
-    }, 5000);
+    }, 3000);
+    
+    // Check system online status every second
+    setInterval(checkSystemStatus, 1000);
 });
+
+// API Request with timeout and error handling
+async function apiRequest(url, options = {}) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), MAX_TIMEOUT);
+    
+    try {
+        const response = await fetch(url, {
+            ...options,
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        
+        if (response.ok) {
+            lastSuccessfulRequest = Date.now();
+            consecutiveFailures = 0;
+            updateSystemStatus(true);
+            return await response.json();
+        } else {
+            throw new Error(`HTTP ${response.status}`);
+        }
+    } catch (error) {
+        clearTimeout(timeoutId);
+        consecutiveFailures++;
+        
+        if (error.name === 'AbortError') {
+            console.warn('Request timeout:', url);
+        } else {
+            console.error('Request failed:', url, error);
+        }
+        
+        throw error;
+    }
+}
+
+// Check if system is still online
+function checkSystemStatus() {
+    const timeSinceLastSuccess = Date.now() - lastSuccessfulRequest;
+    const shouldBeOffline = timeSinceLastSuccess > OFFLINE_THRESHOLD;
+    
+    if (shouldBeOffline && systemOnline) {
+        updateSystemStatus(false);
+    } else if (!shouldBeOffline && !systemOnline && consecutiveFailures === 0) {
+        updateSystemStatus(true);
+    }
+}
+
+// Update system online/offline indicator
+function updateSystemStatus(online) {
+    systemOnline = online;
+    const statusDot = document.querySelector('.status-dot');
+    const statusText = document.querySelector('.system-status span');
+    
+    if (online) {
+        statusDot.classList.remove('offline');
+        statusDot.classList.add('online');
+        if (statusText) statusText.textContent = 'System Online';
+    } else {
+        statusDot.classList.add('offline');
+        statusDot.classList.remove('online');
+        if (statusText) statusText.textContent = 'System Offline';
+        
+        // Grey out stats when offline
+        document.querySelectorAll('.stat-value').forEach(el => {
+            if (!el.dataset.lastValue) {
+                el.dataset.lastValue = el.textContent;
+            }
+            el.style.opacity = '0.5';
+            el.style.color = 'var(--text-secondary)';
+        });
+    }
+}
 
 // System Stats
 async function loadSystemStats() {
     try {
-        const response = await fetch(`${API_BASE}/system/stats`);
-        const data = await response.json();
+        const data = await apiRequest(`${API_BASE}/system/stats`);
         
-        if (data.success) {
+        if (data && data.success) {
+            // Restore normal styling when data arrives
+            const statValues = document.querySelectorAll('.stat-value');
+            statValues.forEach(el => {
+                el.style.opacity = '1';
+                el.style.color = 'var(--text)';
+            });
+            
+            // Update values
             document.getElementById('cpu-usage').textContent = `${data.cpu}%`;
             document.getElementById('ram-usage').textContent = `${data.ram}%`;
             document.getElementById('disk-usage').textContent = `${data.disk}%`;
             document.getElementById('temp').textContent = `${data.temp}°C`;
         }
     } catch (error) {
-        console.error('Error loading system stats:', error);
+        // Don't log every error, handled by apiRequest
+        if (consecutiveFailures === 1) {
+            console.warn('System stats unavailable');
+        }
     }
 }
 
 // Load Services
 async function loadServices() {
     try {
-        const response = await fetch(`${API_BASE}/services/list`);
-        const data = await response.json();
+        const data = await apiRequest(`${API_BASE}/services/list`);
         
-        if (data.success) {
+        if (data && data.success) {
             const servicesList = document.getElementById('services-list');
             servicesList.innerHTML = '';
             
