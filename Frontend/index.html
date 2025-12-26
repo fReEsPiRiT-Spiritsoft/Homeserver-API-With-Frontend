@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Homeserver Control Panel</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <i class="fas fa-server"></i>
+                <h2>Homeserver</h2>
+            </div>
+            <nav class="nav-menu">
+                <a href="#dashboard" class="nav-item active" data-section="dashboard">
+                    <i class="fas fa-home"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#dns" class="nav-item" data-section="dns">
+                    <i class="fas fa-network-wired"></i>
+                    <span>DNS Server</span>
+                </a>
+                <a href="#adblock" class="nav-item" data-section="adblock">
+                    <i class="fas fa-shield-alt"></i>
+                    <span>AdBlock/Pi-hole</span>
+                </a>
+                <a href="#gameserver" class="nav-item" data-section="gameserver">
+                    <i class="fas fa-gamepad"></i>
+                    <span>Gameserver</span>
+                </a>
+                <a href="#webspace" class="nav-item" data-section="webspace">
+                    <i class="fas fa-globe"></i>
+                    <span>Webspaces</span>
+                </a>
+                <a href="#apache" class="nav-item" data-section="apache">
+                    <i class="fas fa-cogs"></i>
+                    <span>Apache2</span>
+                </a>
+                <a href="#terminal" class="nav-item" data-section="terminal">
+                    <i class="fas fa-terminal"></i>
+                    <span>Terminal</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="header">
+                <h1 id="page-title">Dashboard</h1>
+                <div class="header-actions">
+                    <div class="system-status">
+                        <span class="status-dot online"></span>
+                        <span>System Online</span>
+                    </div>
+                    <button class="btn-icon" onclick="refreshAll()">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Dashboard Section -->
+            <section id="dashboard" class="content-section active">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <i class="fas fa-microchip"></i>
+                        <div class="stat-info">
+                            <h3>CPU</h3>
+                            <p class="stat-value" id="cpu-usage">--%</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-memory"></i>
+                        <div class="stat-info">
+                            <h3>RAM</h3>
+                            <p class="stat-value" id="ram-usage">--%</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-hdd"></i>
+                        <div class="stat-info">
+                            <h3>Disk</h3>
+                            <p class="stat-value" id="disk-usage">--%</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-thermometer-half"></i>
+                        <div class="stat-info">
+                            <h3>Temp</h3>
+                            <p class="stat-value" id="temp">--°C</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="services-grid">
+                    <div class="card">
+                        <h3>Aktive Services</h3>
+                        <div id="services-list" class="services-list">
+                            <div class="service-item">
+                                <span class="service-name">DNS Server</span>
+                                <span class="status-badge running">Running</span>
+                            </div>
+                            <div class="service-item">
+                                <span class="service-name">Apache2</span>
+                                <span class="status-badge running">Running</span>
+                            </div>
+                            <div class="service-item">
+                                <span class="service-name">Pi-hole</span>
+                                <span class="status-badge running">Running</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3>System Steuerung</h3>
+                        <div class="service-controls">
+                            <button class="btn btn-warning" onclick="confirmPowerAction('suspend')">
+                                <i class="fas fa-moon"></i>
+                                Ruhemodus
+                            </button>
+                            <button class="btn btn-info" onclick="confirmPowerAction('reboot')">
+                                <i class="fas fa-redo"></i>
+                                Neustart
+                            </button>
+                            <button class="btn btn-danger" onclick="confirmPowerAction('shutdown')">
+                                <i class="fas fa-power-off"></i>
+                                Herunterfahren
+                            </button>
+                        </div>
+                        <div class="form-group" style="margin-top: 1rem;">
+                            <label>Wake-on-LAN (MAC-Adresse)</label>
+                            <div class="input-group">
+                                <input type="text" id="wol-mac" placeholder="00:11:22:33:44:55" value="00:11:22:33:44:55">
+                                <button class="btn btn-success" onclick="wakeSystem()">
+                                    <i class="fas fa-sun"></i>
+                                    Aufwecken
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- DNS Section -->
+            <section id="dns" class="content-section">
+                <div class="card">
+                    <h3>DNS Server Verwaltung</h3>
+                    <div class="service-controls">
+                        <button class="btn btn-success" onclick="controlService('dns', 'start')">
+                            <i class="fas fa-play"></i> Start
+                        </button>
+                        <button class="btn btn-warning" onclick="controlService('dns', 'restart')">
+                            <i class="fas fa-redo"></i> Restart
+                        </button>
+                        <button class="btn btn-danger" onclick="controlService('dns', 'stop')">
+                            <i class="fas fa-stop"></i> Stop
+                        </button>
+                        <button class="btn btn-info" onclick="getServiceStatus('dns')">
+                            <i class="fas fa-info-circle"></i> Status
+                        </button>
+                    </div>
+                    <div class="service-status" id="dns-status"></div>
+                </div>
+
+                <div class="card">
+                    <h3>DNS Einträge</h3>
+                    <div class="input-group">
+                        <input type="text" id="dns-domain" placeholder="Domain (z.B. server.local)">
+                        <input type="text" id="dns-ip" placeholder="IP-Adresse">
+                        <button class="btn btn-primary" onclick="addDNSEntry()">
+                            <i class="fas fa-plus"></i> Hinzufügen
+                        </button>
+                    </div>
+                    <div class="table-container">
+                        <table id="dns-table">
+                            <thead>
+                                <tr>
+                                    <th>Domain</th>
+                                    <th>IP-Adresse</th>
+                                    <th>Aktionen</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dns-entries">
+                                <!-- Dynamic content -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- AdBlock Section -->
+            <section id="adblock" class="content-section">
+                <div class="card">
+                    <h3>Pi-hole / AdBlock Verwaltung</h3>
+                    <div class="service-controls">
+                        <button class="btn btn-success" onclick="controlService('pihole', 'enable')">
+                            <i class="fas fa-shield-alt"></i> Enable
+                        </button>
+                        <button class="btn btn-danger" onclick="controlService('pihole', 'disable')">
+                            <i class="fas fa-ban"></i> Disable
+                        </button>
+                        <button class="btn btn-info" onclick="getPiholeStats()">
+                            <i class="fas fa-chart-bar"></i> Statistiken
+                        </button>
+                    </div>
+                    <div class="pihole-stats" id="pihole-stats">
+                        <div class="stat-item">
+                            <h4>Geblockte Queries</h4>
+                            <p id="blocked-queries">--</p>
+                        </div>
+                        <div class="stat-item">
+                            <h4>Total Queries</h4>
+                            <p id="total-queries">--</p>
+                        </div>
+                        <div class="stat-item">
+                            <h4>Block Rate</h4>
+                            <p id="block-rate">--%</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>Blocklist Verwaltung</h3>
+                    <div class="input-group">
+                        <input type="text" id="blocklist-url" placeholder="Blocklist URL">
+                        <button class="btn btn-primary" onclick="addBlocklist()">
+                            <i class="fas fa-plus"></i> Hinzufügen
+                        </button>
+                    </div>
+                    <button class="btn btn-warning" onclick="updateGravity()">
+                        <i class="fas fa-sync"></i> Update Gravity
+                    </button>
+                </div>
+            </section>
+
+            <!-- Gameserver Section -->
+            <section id="gameserver" class="content-section">
+                <div class="card">
+                    <h3>Gameserver Verwaltung</h3>
+                    <button class="btn btn-primary" onclick="showAddGameserverModal()">
+                        <i class="fas fa-plus"></i> Neuer Gameserver
+                    </button>
+                </div>
+
+                <div class="gameserver-grid" id="gameserver-list">
+                    <!-- Gameserver cards will be loaded dynamically -->
+                </div>
+            </section>
+
+            <!-- Webspace Section -->
+            <section id="webspace" class="content-section">
+                <div class="card">
+                    <h3>Webspace Verwaltung</h3>
+                    <button class="btn btn-primary" onclick="showAddWebspaceModal()">
+                        <i class="fas fa-plus"></i> Neuer Webspace
+                    </button>
+                </div>
+
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Domain</th>
+                                <th>Pfad</th>
+                                <th>Status</th>
+                                <th>Aktionen</th>
+                            </tr>
+                        </thead>
+                        <tbody id="webspace-list">
+                            <tr>
+                                <td>example.local</td>
+                                <td>/var/www/example</td>
+                                <td><span class="status-badge running">Active</span></td>
+                                <td>
+                                    <button class="btn btn-sm btn-info" onclick="editWebspace('example.local')">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-danger" onclick="deleteWebspace('example.local')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Apache Section -->
+            <section id="apache" class="content-section">
+                <div class="card">
+                    <h3>Apache2 Verwaltung</h3>
+                    <div class="service-controls">
+                        <button class="btn btn-success" onclick="controlService('apache2', 'start')">
+                            <i class="fas fa-play"></i> Start
+                        </button>
+                        <button class="btn btn-warning" onclick="controlService('apache2', 'restart')">
+                            <i class="fas fa-redo"></i> Restart
+                        </button>
+                        <button class="btn btn-danger" onclick="controlService('apache2', 'stop')">
+                            <i class="fas fa-stop"></i> Stop
+                        </button>
+                        <button class="btn btn-info" onclick="getServiceStatus('apache2')">
+                            <i class="fas fa-info-circle"></i> Status
+                        </button>
+                    </div>
+                    <div class="service-status" id="apache-status"></div>
+                </div>
+
+                <div class="card">
+                    <h3>Apache Module</h3>
+                    <div class="modules-grid" id="apache-modules">
+                        <!-- Dynamic content -->
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>Apache Logs</h3>
+                    <div class="log-viewer" id="apache-logs">
+                        <pre>Loading logs...</pre>
+                    </div>
+                    <button class="btn btn-info" onclick="loadApacheLogs()">
+                        <i class="fas fa-sync"></i> Logs aktualisieren
+                    </button>
+                </div>
+            </section>
+
+            <!-- Terminal Section -->
+            <section id="terminal" class="content-section">
+                <!-- SSH Connection Form -->
+                <div class="card" id="ssh-login-card">
+                    <h3><i class="fas fa-network-wired"></i> SSH Verbindung</h3>
+                    <div class="form-group">
+                        <label>Host / IP-Adresse</label>
+                        <input type="text" id="ssh-host" placeholder="192.168.0.205" value="192.168.0.205">
+                    </div>
+                    <div class="form-group">
+                        <label>Port</label>
+                        <input type="number" id="ssh-port" placeholder="22" value="22">
+                    </div>
+                    <div class="form-group">
+                        <label>Benutzername</label>
+                        <input type="text" id="ssh-username" placeholder="root">
+                    </div>
+                    <div class="form-group">
+                        <label>Passwort</label>
+                        <input type="password" id="ssh-password" placeholder="••••••••">
+                    </div>
+                    <div class="service-controls">
+                        <button class="btn btn-success" onclick="connectSSH()">
+                            <i class="fas fa-plug"></i>
+                            Verbinden
+                        </button>
+                    </div>
+                    <div id="ssh-connection-status"></div>
+                </div>
+
+                <!-- Terminal Interface (hidden until connected) -->
+                <div class="card terminal-card" id="terminal-interface" style="display: none;">
+                    <div class="terminal-header">
+                        <div>
+                            <h3><i class="fas fa-terminal"></i> Server Terminal</h3>
+                            <small id="terminal-connection-info" style="color: var(--text-secondary);"></small>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button class="btn btn-sm btn-info" onclick="clearTerminal()">
+                                <i class="fas fa-trash"></i> Clear
+                            </button>
+                            <button class="btn btn-sm btn-danger" onclick="disconnectSSH()">
+                                <i class="fas fa-times"></i> Trennen
+                            </button>
+                        </div>
+                    </div>
+                    <div class="terminal-container" id="terminal-output"></div>
+                    <div class="terminal-input-group">
+                        <span class="terminal-prompt" id="terminal-prompt">$</span>
+                        <input type="text" id="terminal-input" class="terminal-input" placeholder="Befehl eingeben..." onkeypress="handleTerminalInput(event)">
+                        <button class="btn btn-success" onclick="executeTerminalCommand()">
+                            <i class="fas fa-play"></i>
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal for Adding Gameserver -->
+    <div id="addGameserverModal" class="modal">
+        <div class="modal-content modal-large">
+            <span class="close" onclick="closeModal('addGameserverModal')">&times;</span>
+            <h3>Neuer Gameserver</h3>
+            
+            <div id="gameserver-form">
+                <div class="form-group">
+                    <label>Server Typ</label>
+                    <select id="gameserver-type">
+                        <option value="minecraft-java">Minecraft Java Edition</option>
+                        <option value="minecraft-bedrock">Minecraft Bedrock Edition</option>
+                        <option value="beammp">BeamMP (BeamNG.drive)</option>
+                        <option value="valheim">Valheim</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Server Name</label>
+                    <input type="text" id="gameserver-name" placeholder="Mein Server">
+                </div>
+                <div class="form-group">
+                    <label>Port</label>
+                    <input type="number" id="gameserver-port" placeholder="25565">
+                </div>
+                <div class="form-group">
+                    <label>RAM (GB)</label>
+                    <input type="number" id="gameserver-ram" placeholder="4" min="1" max="32">
+                </div>
+                <button class="btn btn-primary" onclick="addGameserver()">
+                    <i class="fas fa-download"></i> Herunterladen & Installieren
+                </button>
+            </div>
+            
+            <!-- Installation Progress -->
+            <div id="gameserver-install-progress" style="display: none;">
+                <div class="install-progress">
+                    <h4>Installation läuft...</h4>
+                    <div class="progress-bar">
+                        <div id="install-progress-fill" class="progress-fill"></div>
+                    </div>
+                    <p id="install-status-message">Bereite Installation vor...</p>
+                    <p id="install-progress-percent">0%</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Config Editor -->
+    <div id="configEditorModal" class="modal">
+        <div class="modal-content modal-large">
+            <span class="close" onclick="closeModal('configEditorModal')">&times;</span>
+            <h3>
+                <i class="fas fa-cog"></i> Konfiguration bearbeiten: <span id="config-server-name"></span>
+            </h3>
+            <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                Datei: <span id="config-file-name"></span>
+            </p>
+            <div class="config-editor">
+                <textarea id="config-content" spellcheck="false"></textarea>
+            </div>
+            <div style="display: flex; gap: 0.75rem; margin-top: 1rem;">
+                <button class="btn btn-success" onclick="saveConfig()">
+                    <i class="fas fa-save"></i> Speichern
+                </button>
+                <button class="btn btn-secondary" onclick="closeModal('configEditorModal')">
+                    <i class="fas fa-times"></i> Abbrechen
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Server Console -->
+    <div id="serverConsoleModal" class="modal">
+        <div class="modal-content modal-large">
+            <span class="close" onclick="closeModal('serverConsoleModal')">&times;</span>
+            <h3>
+                <i class="fas fa-terminal"></i> Server Console: <span id="console-server-name"></span>
+            </h3>
+            <div class="server-console">
+                <div class="console-output" id="console-output"></div>
+                <div class="console-input-area">
+                    <input type="text" id="console-command-input" placeholder="Befehl eingeben..." 
+                           onkeydown="if(event.key === 'Enter') sendConsoleCommand()">
+                    <button class="btn btn-primary btn-sm" onclick="sendConsoleCommand()">
+                        <i class="fas fa-paper-plane"></i> Senden
+                    </button>
+                </div>
+            </div>
+            <div style="margin-top: 1rem;">
+                <button class="btn btn-secondary btn-sm" onclick="refreshConsole()">
+                    <i class="fas fa-sync"></i> Aktualisieren
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Adding Webspace -->
+    <div id="addWebspaceModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('addWebspaceModal')">&times;</span>
+            <h3>Neuer Webspace</h3>
+            <div class="form-group">
+                <label>Domain</label>
+                <input type="text" id="webspace-domain" placeholder="example.local">
+            </div>
+            <div class="form-group">
+                <label>Pfad</label>
+                <input type="text" id="webspace-path" placeholder="/var/www/example">
+            </div>
+            <button class="btn btn-primary" onclick="addWebspace()">Erstellen</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

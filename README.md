@@ -1,0 +1,317 @@
+# Homeserver Control Panel
+
+Eine umfassende Benutzeroberfläche zur Verwaltung Ihres Home/Gameservers mit vollautomatischer Gameserver-Installation.
+
+## Features
+
+- **Dashboard**: Übersicht über Systemressourcen (CPU, RAM, Disk, Temperatur)
+- **DNS Server Verwaltung**: DNS-Einträge hinzufügen, bearbeiten und löschen
+- **AdBlock/Pi-hole**: Pi-hole Verwaltung und Statistiken
+- **Gameserver Management** ⭐ NEU:
+  - **Automatische Installation**: Minecraft Java/Bedrock, BeamMP, Valheim
+  - **Config-Editor**: Direkte Bearbeitung von server.properties & Co.
+  - **Live Console**: Echtzeit-Konsole mit Befehlseingabe
+  - **Server-Kontrolle**: Start, Stop, Restart per Klick
+  - **Status-Überwachung**: Live-Status jedes Servers
+- **Webspaces**: Apache2 Virtual Hosts erstellen und verwalten
+- **Apache2**: Service-Kontrolle und Log-Viewer
+- **SSH Terminal**: Sichere SSH-Verbindung zum Server
+- **Power Management**: Herunterfahren, Neustart, Suspend, Wake-on-LAN
+
+## Installation
+
+### 1. System-Voraussetzungen
+
+```bash
+# Debian/Ubuntu
+sudo apt update
+sudo apt install -y python3 python3-pip python3-venv screen openjdk-17-jre-headless
+
+# Optional für Valheim (SteamCMD)
+sudo apt install -y steamcmd
+
+# Gameserver-Verzeichnis erstellen
+sudo mkdir -p /opt/gameservers
+sudo chown $USER:$USER /opt/gameservers
+```
+
+### 2. Backend Setup (Python)
+
+```bash
+cd Backend
+python3 -m venv venv
+source venv/bin/activate  # Unter Windows: venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+### 3. Backend starten
+
+```bash
+python server.py
+```
+
+Das Backend läuft auf `http://0.0.0.0:5000`
+
+### 4. Frontend einrichten
+
+Das Frontend ist bereits fertig und kann direkt mit Apache2 bereitgestellt werden.
+
+```bash
+sudo cp -r Frontend/* /var/www/homeserver/
+```
+
+Oder erstellen Sie einen Apache Virtual Host:
+
+```apache
+<VirtualHost *:80>
+    ServerName homeserver.local
+    DocumentRoot /pfad/zu/Frontend
+    
+    <Directory /pfad/zu/Frontend>
+        Options Indexes FollowSymLinks
+        AllowOverride All
+        Require all granted
+    </Directory>
+</VirtualHost>
+```
+
+### 4. Apache Virtual Host aktivieren
+
+```bash
+sudo a2ensite homeserver.conf
+sudo systemctl reload apache2
+```
+
+## Konfiguration
+
+### Backend-Berechtigungen
+
+Das Backend benötigt sudo-Rechte für bestimmte Operationen. Erstellen Sie eine sudoers-Datei:
+
+```bash
+sudo visudo -f /etc/sudoers.d/homeserver-control
+```
+
+Fügen Sie hinzu (ersetzen Sie `USERNAME` mit Ihrem Benutzernamen):
+
+```
+USERNAME ALL=(ALL) NOPASSWD: /bin/systemctl start *
+USERNAME ALL=(ALL) NOPASSWD: /bin/systemctl stop *
+USERNAME ALL=(ALL) NOPASSWD: /bin/systemctl restart *
+USERNAME ALL=(ALL) NOPASSWD: /bin/systemctl status *
+USERNAME ALL=(ALL) NOPASSWD: /usr/local/bin/pihole
+USERNAME ALL=(ALL) NOPASSWD: /usr/sbin/a2ensite
+USERNAME ALL=(ALL) NOPASSWD: /usr/sbin/a2dissite
+```
+
+### Firewall
+
+Öffnen Sie die benötigten Ports:
+
+```bash
+sudo ufw allow 80/tcp     # HTTP
+sudo ufw allow 5000/tcp   # Backend API
+sudo ufw allow 22/tcp     # SSH
+sudo ufw allow 25565/tcp  # Minecraft (Beispiel)
+# Weitere Ports je nach Gameserver
+```
+
+## Gameserver-Verwaltung 🎮
+
+### Unterstützte Server
+
+Das Panel installiert folgende Gameserver **vollautomatisch**:
+
+| Server | Typ | Standard-Port | Besonderheiten |
+|--------|-----|---------------|----------------|
+| **Minecraft Java** | minecraft-java | 25565 | Akzeptiert EULA automatisch |
+| **Minecraft Bedrock** | minecraft-bedrock | 19132 | Linux-Version |
+| **BeamMP** | beammp | 30814 | BeamNG.drive Multiplayer |
+| **Valheim** | valheim | 2456 | Benötigt SteamCMD |
+
+### Server erstellen
+
+1. Klicken Sie auf **"Neuer Gameserver"**
+2. Wählen Sie den **Server-Typ** aus dem Dropdown
+3. Geben Sie einen **Namen** ein (z.B. "MeinMinecraftServer")
+4. Setzen Sie den **Port** (Standard-Ports werden vorgeschlagen)
+5. Wählen Sie **RAM** in GB (empfohlen: 4-8 GB für Minecraft)
+6. Klicken Sie auf **"Herunterladen & Installieren"**
+
+Die Installation läuft vollautomatisch:
+- ✅ Download der Server-Dateien von offiziellen Quellen
+- ✅ Erstellung des Server-Verzeichnisses unter `/opt/gameservers/`
+- ✅ Installation aller Abhängigkeiten
+- ✅ Erstellung von Start-Skripten
+- ✅ Basis-Konfiguration
+
+### Server konfigurieren
+
+Nach erfolgreicher Installation:
+
+1. Klicken Sie auf **"Config"** beim gewünschten Server
+2. Bearbeiten Sie die Konfigurationsdatei direkt im Browser:
+   - **Minecraft**: `server.properties` (MOTD, Schwierigkeit, Spielmodus, etc.)
+   - **BeamMP**: `ServerConfig.toml` (Server-Name, Karte, Max-Spieler)
+   - **Valheim**: `start.sh` (Welt-Name, Passwort, Port)
+3. Klicken Sie auf **"Speichern"**
+4. **Starten Sie den Server neu**, damit Änderungen übernommen werden
+
+### Server steuern
+
+- **▶️ Start**: Startet den Server in einer Screen-Session
+- **🔄 Restart**: Neustart des Servers
+- **⏹️ Stop**: Stoppt den Server
+- **⚙️ Config**: Öffnet den Config-Editor
+- **💻 Console**: Live-Konsole mit Befehlseingabe
+- **🗑️ Löschen**: Entfernt Server und alle Dateien
+
+### Server-Console verwenden
+
+Die Live-Console zeigt die letzten 50 Zeilen der Server-Ausgabe:
+
+1. Klicken Sie auf **"Console"** beim Server
+2. Die Ausgabe aktualisiert sich alle 3 Sekunden automatisch
+3. Geben Sie Befehle unten ein (z.B. für Minecraft: `op Spielername`, `whitelist add Spieler`)
+4. Klicken Sie auf **"Senden"** oder drücken Sie Enter
+
+### Screen-Sessions verwalten
+
+Alle Server laufen in GNU Screen-Sessions. Manueller Zugriff via SSH:
+
+```bash
+# Alle laufenden Server anzeigen
+screen -list
+
+# An Server-Session anhängen
+screen -r ServerName
+
+# Von Session trennen (Server läuft weiter)
+Strg+A, dann D
+
+# Server-Screen direkt beenden
+screen -S ServerName -X quit
+```
+
+### Server-Verzeichnisse
+
+```
+/opt/gameservers/
+├── MeinMinecraftServer/
+│   ├── server.jar
+│   ├── server.properties
+│   ├── start.sh
+│   ├── eula.txt
+│   ├── world/
+│   └── logs/
+├── BeamMPServer/
+│   ├── BeamMP-Server
+│   ├── ServerConfig.toml
+│   └── start.sh
+└── ...
+```
+
+### Fehlersuche
+
+**Server startet nicht:**
+- Prüfen Sie die Console-Ausgabe auf Fehler
+- Stellen Sie sicher, dass der Port nicht bereits belegt ist: `netstat -tulpn | grep PORT`
+- Prüfen Sie Berechtigungen: `ls -la /opt/gameservers/`
+
+**Installation schlägt fehl:**
+- Prüfen Sie Internetverbindung (Download muss möglich sein)
+- Für Valheim: Stellen Sie sicher, dass SteamCMD installiert ist
+- Prüfen Sie Backend-Logs: `python server.py` (im Terminal)
+
+**Config-Änderungen werden nicht übernommen:**
+- Starten Sie den Server nach Config-Änderungen neu
+- Manche Server benötigen einen vollständigen Neustart (Stop → Start)
+
+## Verwendung
+
+1. Öffnen Sie die Benutzeroberfläche in Ihrem Browser: `http://homeserver.local` oder `http://SERVER_IP`
+
+2. Navigieren Sie durch die verschiedenen Bereiche über die Sidebar
+
+3. Verwenden Sie die grafischen Kontrollen für die meisten Operationen
+
+4. Das SSH-Terminal steht für erweiterte Befehle zur Verfügung
+
+## Sicherheitshinweise
+
+⚠️ **WICHTIG**: Diese Anwendung bietet direkten Zugriff auf Systemfunktionen!
+
+- Verwenden Sie ein starkes Passwort für den Server-Zugang
+- Erwägen Sie die Implementierung von Authentifizierung (z.B. mit Flask-Login)
+- Beschränken Sie den Zugriff auf vertrauenswürdige Netzwerke
+- Aktivieren Sie HTTPS für die Produktion
+- Prüfen Sie alle Terminal-Befehle vor der Ausführung
+
+## Systemanforderungen
+
+- **OS**: Linux (Ubuntu 20.04+, Debian 10+)
+- **Python**: 3.8+
+- **Apache2**: 2.4+
+- **Optional**: Pi-hole, BIND9 für DNS
+
+## API-Endpunkte
+
+Das Backend stellt folgende REST-API zur Verfügung:
+
+- `GET /api/system/stats` - Systemstatistiken
+- `GET /api/services/list` - Liste aller Services
+- `POST /api/service/<service>/<action>` - Service-Kontrolle
+- `GET /api/dns/list` - DNS-Einträge auflisten
+- `POST /api/dns/add` - DNS-Eintrag hinzufügen
+- `DELETE /api/dns/delete` - DNS-Eintrag löschen
+- `GET /api/pihole/stats` - Pi-hole Statistiken
+- `POST /api/pihole/blocklist/add` - Blocklist hinzufügen
+- `POST /api/pihole/gravity/update` - Gravity aktualisieren
+- `GET /api/gameserver/list` - Gameserver auflisten
+- `POST /api/gameserver/create` - Gameserver erstellen
+- `POST /api/gameserver/<name>/<action>` - Gameserver steuern
+- `GET /api/webspace/list` - Webspaces auflisten
+- `POST /api/webspace/create` - Webspace erstellen
+- `DELETE /api/webspace/delete` - Webspace löschen
+- `GET /api/apache/logs` - Apache Logs abrufen
+- `POST /api/terminal/execute` - Terminal-Befehl ausführen
+
+## Erweiterungen
+
+Sie können die Anwendung erweitern mit:
+
+- Authentifizierung/Autorisierung
+- Weitere Gameserver-Typen
+- Docker-Container-Verwaltung
+- Backup-Management
+- Monitoring und Alerting
+- SSL-Zertifikat-Verwaltung
+
+## Troubleshooting
+
+### Backend startet nicht
+- Prüfen Sie, ob alle Abhängigkeiten installiert sind: `pip install -r requirements.txt`
+- Prüfen Sie, ob Port 5000 verfügbar ist: `netstat -tulpn | grep 5000`
+
+### CORS-Fehler im Frontend
+- Stellen Sie sicher, dass das Backend läuft
+- Prüfen Sie die `API_BASE` URL in `script.js`
+
+### Service-Kontrolle funktioniert nicht
+- Prüfen Sie die sudo-Berechtigungen
+- Testen Sie Befehle manuell: `sudo systemctl status apache2`
+
+## Lizenz
+
+MIT License - Frei verwendbar für private und kommerzielle Zwecke.
+
+## Support
+
+Bei Problemen oder Fragen:
+1. Prüfen Sie die Browser-Konsole auf Fehler
+2. Prüfen Sie die Backend-Logs
+3. Stellen Sie sicher, dass alle Services installiert sind
+
+---
+
+**Entwickelt für Homeserver-Administration**
