@@ -44,6 +44,29 @@
                     <i class="fas fa-terminal"></i>
                     <span>Terminal</span>
                 </a>
+                <div style="border-top: 1px solid var(--border); margin: 1rem 0; padding-top: 1rem;">
+                    <p style="padding: 0 1.5rem; color: var(--text-secondary); font-size: 0.875rem; font-weight: 600; text-transform: uppercase; margin-bottom: 0.5rem;">Erweitert</p>
+                </div>
+                <a href="#filemanager" class="nav-item" data-section="filemanager">
+                    <i class="fas fa-folder-open"></i>
+                    <span>File Manager <span class="wip-badge">WIP</span></span>
+                </a>
+                <a href="#notifications" class="nav-item" data-section="notifications">
+                    <i class="fas fa-bell"></i>
+                    <span>Notifikationen <span class="wip-badge">WIP</span></span>
+                </a>
+                <a href="#backups" class="nav-item" data-section="backups">
+                    <i class="fas fa-save"></i>
+                    <span>Backups <span class="wip-badge">WIP</span></span>
+                </a>
+                <a href="#scheduler" class="nav-item" data-section="scheduler">
+                    <i class="fas fa-clock"></i>
+                    <span>Scheduler <span class="wip-badge">WIP</span></span>
+                </a>
+                <a href="#docker" class="nav-item" data-section="docker">
+                    <i class="fab fa-docker"></i>
+                    <span>Docker <span class="wip-badge">WIP</span></span>
+                </a>
             </nav>
         </aside>
 
@@ -381,6 +404,130 @@
                         <button class="btn btn-success" onclick="executeTerminalCommand()">
                             <i class="fas fa-play"></i>
                         </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- File Manager Section (WIP) -->
+            <section id="filemanager" class="content-section">
+                <div class="card wip-card">
+                    <div class="wip-header">
+                        <i class="fas fa-folder-open" style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;"></i>
+                        <h2>File Manager</h2>
+                        <span class="wip-badge-large">Work in Progress</span>
+                    </div>
+                    <div class="wip-content">
+                        <p>Der File Manager ist derzeit in Entwicklung und wird folgende Features bieten:</p>
+                        <ul class="wip-features">
+                            <li><i class="fas fa-check"></i> Browser-basierter Datei-Explorer</li>
+                            <li><i class="fas fa-check"></i> Dateien hochladen & herunterladen</li>
+                            <li><i class="fas fa-check"></i> Text-Editor für direkte Bearbeitung</li>
+                            <li><i class="fas fa-check"></i> Permissions ändern (chmod)</li>
+                            <li><i class="fas fa-check"></i> Zip/Unzip direkt im Browser</li>
+                            <li><i class="fas fa-check"></i> Drag & Drop Upload</li>
+                            <li><i class="fas fa-check"></i> Datei-Vorschau (Bilder, Videos, PDFs)</li>
+                        </ul>
+                        <p class="wip-eta"><i class="fas fa-clock"></i> Voraussichtliche Implementierung: Q1 2026</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Notifications Section (WIP) -->
+            <section id="notifications" class="content-section">
+                <div class="card wip-card">
+                    <div class="wip-header">
+                        <i class="fas fa-bell" style="font-size: 3rem; color: var(--warning); margin-bottom: 1rem;"></i>
+                        <h2>Notifikations-System</h2>
+                        <span class="wip-badge-large">Work in Progress</span>
+                    </div>
+                    <div class="wip-content">
+                        <p>Das Notifikations-System wird Sie über wichtige Ereignisse informieren:</p>
+                        <ul class="wip-features">
+                            <li><i class="fas fa-check"></i> Discord Bot Integration</li>
+                            <li><i class="fas fa-check"></i> Telegram Bot Integration</li>
+                            <li><i class="fas fa-check"></i> Email-Benachrichtigungen</li>
+                            <li><i class="fas fa-check"></i> Alerts bei Server-Crashes</li>
+                            <li><i class="fas fa-check"></i> CPU/RAM Überlastungs-Warnungen</li>
+                            <li><i class="fas fa-check"></i> Disk Space Warnungen</li>
+                            <li><i class="fas fa-check"></i> Fehlgeschlagene Backups</li>
+                            <li><i class="fas fa-check"></i> SSH-Login Benachrichtigungen</li>
+                        </ul>
+                        <p class="wip-eta"><i class="fas fa-clock"></i> Voraussichtliche Implementierung: Q1 2026</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Backups Section (WIP) -->
+            <section id="backups" class="content-section">
+                <div class="card wip-card">
+                    <div class="wip-header">
+                        <i class="fas fa-save" style="font-size: 3rem; color: var(--success); margin-bottom: 1rem;"></i>
+                        <h2>Backup-System</h2>
+                        <span class="wip-badge-large">Work in Progress</span>
+                    </div>
+                    <div class="wip-content">
+                        <p>Automatische Backups für maximale Datensicherheit:</p>
+                        <ul class="wip-features">
+                            <li><i class="fas fa-check"></i> Automatische Gameserver-Backups</li>
+                            <li><i class="fas fa-check"></i> Konfigurationsdatei-Backups</li>
+                            <li><i class="fas fa-check"></i> Zeitgesteuerte Backups (täglich/wöchentlich)</li>
+                            <li><i class="fas fa-check"></i> One-Click Restore</li>
+                            <li><i class="fas fa-check"></i> Backup auf externe Festplatte/NAS</li>
+                            <li><i class="fas fa-check"></i> Cloud-Backup (Dropbox, Google Drive)</li>
+                            <li><i class="fas fa-check"></i> Inkrementelle Backups</li>
+                            <li><i class="fas fa-check"></i> Backup-Verschlüsselung</li>
+                        </ul>
+                        <p class="wip-eta"><i class="fas fa-clock"></i> Voraussichtliche Implementierung: Q1 2026</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Scheduler Section (WIP) -->
+            <section id="scheduler" class="content-section">
+                <div class="card wip-card">
+                    <div class="wip-header">
+                        <i class="fas fa-clock" style="font-size: 3rem; color: var(--info); margin-bottom: 1rem;"></i>
+                        <h2>Task Scheduler</h2>
+                        <span class="wip-badge-large">Work in Progress</span>
+                    </div>
+                    <div class="wip-content">
+                        <p>Automatisieren Sie wiederkehrende Aufgaben:</p>
+                        <ul class="wip-features">
+                            <li><i class="fas fa-check"></i> Cron-Jobs über GUI erstellen</li>
+                            <li><i class="fas fa-check"></i> Gameserver Auto-Restart bei Crash</li>
+                            <li><i class="fas fa-check"></i> Automatische System-Updates</li>
+                            <li><i class="fas fa-check"></i> Gameserver-Updates automatisch</li>
+                            <li><i class="fas fa-check"></i> Geplante Neustarts (z.B. 4 Uhr morgens)</li>
+                            <li><i class="fas fa-check"></i> Backup-Scheduler</li>
+                            <li><i class="fas fa-check"></i> Custom Scripts ausführen</li>
+                            <li><i class="fas fa-check"></i> Task-Historie & Logs</li>
+                        </ul>
+                        <p class="wip-eta"><i class="fas fa-clock"></i> Voraussichtliche Implementierung: Q2 2026</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Docker Section (WIP) -->
+            <section id="docker" class="content-section">
+                <div class="card wip-card">
+                    <div class="wip-header">
+                        <i class="fab fa-docker" style="font-size: 3rem; color: #2496ED; margin-bottom: 1rem;"></i>
+                        <h2>Docker Management</h2>
+                        <span class="wip-badge-large">Work in Progress</span>
+                    </div>
+                    <div class="wip-content">
+                        <p>Verwalten Sie Docker Container direkt über das Panel:</p>
+                        <ul class="wip-features">
+                            <li><i class="fas fa-check"></i> Container erstellen/starten/stoppen</li>
+                            <li><i class="fas fa-check"></i> Portainer Integration</li>
+                            <li><i class="fas fa-check"></i> Vorgefertigte Templates (Nextcloud, Plex, Jellyfin)</li>
+                            <li><i class="fas fa-check"></i> Docker Compose Support</li>
+                            <li><i class="fas fa-check"></i> Resource-Limits pro Container</li>
+                            <li><i class="fas fa-check"></i> Container-Logs live anzeigen</li>
+                            <li><i class="fas fa-check"></i> Volume Management</li>
+                            <li><i class="fas fa-check"></i> Network Configuration</li>
+                        </ul>
+                        <p class="wip-eta"><i class="fas fa-clock"></i> Voraussichtliche Implementierung: Q2 2026</p>
                     </div>
                 </div>
             </section>

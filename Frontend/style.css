@@ -658,6 +658,114 @@ tr:hover {
     background: var(--primary);
 }
 
+/* WIP Badge */
+.wip-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, var(--warning), var(--danger));
+    color: white;
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin-left: 0.5rem;
+    animation: wipPulse 2s ease-in-out infinite;
+}
+
+@keyframes wipPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+/* WIP Card */
+.wip-card {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(6, 182, 212, 0.05));
+    border: 2px dashed var(--primary);
+    padding: 3rem 2rem;
+    text-align: center;
+}
+
+.wip-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.wip-header h2 {
+    margin: 0.5rem 0;
+    font-size: 2rem;
+    color: var(--text);
+}
+
+.wip-badge-large {
+    display: inline-block;
+    background: linear-gradient(135deg, var(--warning), var(--danger));
+    color: white;
+    padding: 0.5rem 1.5rem;
+    border-radius: 25px;
+    font-size: 0.875rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    margin-top: 1rem;
+    animation: wipPulse 2s ease-in-out infinite;
+    box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+}
+
+.wip-content {
+    max-width: 800px;
+    margin: 0 auto;
+    text-align: left;
+}
+
+.wip-content > p {
+    font-size: 1.1rem;
+    color: var(--text);
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.wip-features {
+    list-style: none;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1rem;
+    margin: 2rem 0;
+}
+
+.wip-features li {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: var(--card-bg);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+}
+
+.wip-features li i {
+    color: var(--success);
+    font-size: 1.2rem;
+}
+
+.wip-eta {
+    text-align: center;
+    margin-top: 2rem;
+    padding: 1rem;
+    background: rgba(59, 130, 246, 0.1);
+    border-radius: 8px;
+    color: var(--info);
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.wip-eta i {
+    margin-right: 0.5rem;
+}
+
 /* Modal Large */
 .modal-large .modal-content {
     max-width: 900px;
