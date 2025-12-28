@@ -15,6 +15,8 @@ Eine umfassende Benutzeroberfläche zur Verwaltung Ihres Home/Gameservers mit vo
 
 - **Gameserver Management** ⭐ NEU:
 - <img width="1919" height="948" alt="grafik" src="https://github.com/user-attachments/assets/fb508135-6e10-4fc6-8f90-86e718136411" />
+<img width="527" height="582" alt="grafik" src="https://github.com/user-attachments/assets/5da0e9bd-8769-4ca8-a4af-d373501a282e" />
+
 
   - **Automatische Installation**: Minecraft Java/Bedrock, BeamMP, Valheim
   - **Config-Editor**: Direkte Bearbeitung von server.properties & Co.
