@@ -642,18 +642,28 @@ function createGameserverCard(server) {
         'minecraft-java': 'fa-cube',
         'minecraft-bedrock': 'fa-cube',
         'beammp': 'fa-car',
-        'valheim': 'fa-hammer'
+        'valheim': 'fa-hammer',
+        'battlefield2-aix': 'fa-jet-fighter'
     };
-    
+
+    const typeLabels = {
+        'minecraft-java': 'Minecraft Java Edition',
+        'minecraft-bedrock': 'Minecraft Bedrock Edition',
+        'beammp': 'BeamMP (BeamNG.drive)',
+        'valheim': 'Valheim',
+        'battlefield2-aix': 'Battlefield 2 AIX Mod'
+    };
+
     const icon = typeIcons[server.type] || 'fa-server';
-    
+    const typeLabel = typeLabels[server.type] || server.type;
+
     card.innerHTML = `
         <div class="gameserver-header">
             <h4><i class="fas ${icon}"></i> ${server.name}</h4>
             <span class="status-badge ${statusClass}">${statusText}</span>
         </div>
         <div class="gameserver-info">
-            <p><strong>Typ:</strong> ${server.type}</p>
+            <p><strong>Typ:</strong> ${typeLabel}</p>
             <p><strong>Port:</strong> ${server.port}</p>
             <p><strong>RAM:</strong> ${server.ram}GB</p>
             <p><strong>Erstellt:</strong> ${new Date(server.created).toLocaleDateString('de-DE')}</p>
@@ -683,7 +693,7 @@ function createGameserverCard(server) {
             </button>
         </div>
     `;
-    
+
     return card;
 }
 

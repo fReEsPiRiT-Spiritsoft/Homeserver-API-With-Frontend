@@ -237,6 +237,12 @@ def extract_archive(archive_path, extract_to):
         elif archive_path.endswith('.tar.gz') or archive_path.endswith('.tgz'):
             with tarfile.open(archive_path, 'r:gz') as tar_ref:
                 tar_ref.extractall(extract_to)
+        elif archive_path.endswith('.tar.bz2') or archive_path.endswith('.tbz2'):
+            with tarfile.open(archive_path, 'r:bz2') as tar_ref:
+                tar_ref.extractall(extract_to)
+        else:
+            print(f"[extract_archive] Unbekanntes Archivformat: {archive_path}")
+            return False
         return True
     except Exception as e:
         print(f"Extract error: {e}")
@@ -523,54 +529,157 @@ cd "{self.server_dir}"
             self.update_status('error', 0, error_msg)
             return False
 
+
 class ValheimInstaller(GameserverInstaller):
     """Valheim dedicated server installer"""
-    
     def install(self):
         try:
             print(f"[VALHEIM] Starte Installation für {self.server_name}")
             self.update_status('installing', 10, 'Erstelle Verzeichnis...')
             self.create_directory()
             print(f"[VALHEIM] Verzeichnis erstellt: {self.server_dir}")
-            
             self.update_status('installing', 20, 'Installiere SteamCMD...')
-            # Install via SteamCMD (requires steamcmd to be installed)
-            steamcmd_script = f"""#!/bin/bash
-steamcmd +force_install_dir "{self.server_dir}" +login anonymous +app_update 896660 validate +quit
-"""
+            steamcmd_script = f"""#!/bin/bash\nsteamcmd +force_install_dir \"{self.server_dir}\" +login anonymous +app_update 896660 validate +quit\n"""
             steamcmd_script_path = os.path.join(self.server_dir, 'install.sh')
             with open(steamcmd_script_path, 'w') as f:
                 f.write(steamcmd_script)
             os.chmod(steamcmd_script_path, 0o755)
-            
             self.update_status('installing', 30, 'Lade Valheim Server herunter...')
             result = run_command(steamcmd_script_path)
-            
             if not result['success']:
                 self.update_status('error', 0, 'SteamCMD Installation fehlgeschlagen. Stelle sicher, dass steamcmd installiert ist.')
                 return False
-            
             self.update_status('installing', 80, 'Erstelle Start-Skript...')
-            # Create start script
-            start_script = f"""#!/bin/bash
-cd "{self.server_dir}"
-export LD_LIBRARY_PATH="./linux64:$LD_LIBRARY_PATH"
-export SteamAppId=892970
-./valheim_server.x86_64 -name "{self.server_name}" -port {self.port} -world "Dedicated" -password "changeme123" -public 0
-"""
+            start_script = f"""#!/bin/bash\ncd \"{self.server_dir}\"\nexport LD_LIBRARY_PATH=\"./linux64:$LD_LIBRARY_PATH\"\nexport SteamAppId=892970\n./valheim_server.x86_64 -name \"{self.server_name}\" -port {self.port} -world \"Dedicated\" -password \"changeme123\" -public 0\n"""
             start_script_path = os.path.join(self.server_dir, 'start.sh')
             with open(start_script_path, 'w') as f:
                 f.write(start_script)
             os.chmod(start_script_path, 0o755)
             print(f"[VALHEIM] Start-Skript erstellt: {start_script_path}")
-            
             self.update_status('complete', 100, 'Installation abgeschlossen!')
             print(f"[VALHEIM] Installation erfolgreich abgeschlossen")
+            return True
+        except Exception as e:
+            error_msg = f'Fehler: {str(e)}'
+            print(f"[VALHEIM ERROR] {error_msg}")
+            import traceback
+            traceback.print_exc()
+            self.update_status('error', 0, error_msg)
+            return False
+
+# Battlefield 2 AIX Installer
+class Battlefield2AIXInstaller(GameserverInstaller):
+    """Battlefield 2 AIX Mod Server Installer"""
+    def install(self):
+        try:
+            print(f"[BF2-AIX] Starte Installation für {self.server_name}")
+            self.update_status('installing', 10, 'Erstelle Verzeichnis...')
+            self.create_directory()
+            print(f"[BF2-AIX] Verzeichnis erstellt: {self.server_dir}")
+            
+            # Download BF2 Server Installer
+            self.update_status('installing', 20, 'Lade Battlefield 2 Server herunter...')
+            bf2_url = 'https://www.bf-games.net/downloads/mirror/2956'
+            bf2_archive = os.path.join(self.server_dir, 'bf2-linuxded-1.5.3153.0-installer.tgz')
+            if not download_file(bf2_url, bf2_archive):
+                self.update_status('error', 0, 'Download BF2 Server fehlgeschlagen')
+                return False
+            print(f"[BF2-AIX] BF2 Server Download abgeschlossen: {bf2_archive}")
+            
+            # Entpacke das Installer-Archiv
+            self.update_status('installing', 30, 'Entpacke Battlefield 2 Installer...')
+            if not extract_archive(bf2_archive, self.server_dir):
+                self.update_status('error', 0, 'Entpacken BF2 Server fehlgeschlagen')
+                return False
+            print(f"[BF2-AIX] BF2 Installer entpackt")
+            
+            # Finde das Installer-Skript
+            installer_sh = os.path.join(self.server_dir, 'bf2-linuxded-1.5.3153.0-installer.sh')
+            if not os.path.exists(installer_sh):
+                self.update_status('error', 0, f'Installer-Skript nicht gefunden: {installer_sh}')
+                return False
+            os.chmod(installer_sh, 0o755)
+            
+            # Erstelle ein Installationsverzeichnis für BF2
+            bf2_install_dir = os.path.join(self.server_dir, 'bf2')
+            os.makedirs(bf2_install_dir, exist_ok=True)
+            
+            # Führe den Installer automatisch aus mit expect oder direkter Eingabe
+            self.update_status('installing', 40, 'Installiere Battlefield 2 Server...')
+            install_cmd = f'cd "{self.server_dir}" && echo "{bf2_install_dir}" | sh bf2-linuxded-1.5.3153.0-installer.sh'
+            result = run_command(install_cmd)
+            if not result['success']:
+                # Fallback: Versuche mit direkter Pfadangabe
+                install_cmd = f'cd "{self.server_dir}" && sh bf2-linuxded-1.5.3153.0-installer.sh --target "{bf2_install_dir}" --noexec --nox11'
+                result = run_command(install_cmd)
+                if not result['success']:
+                    print(f"[BF2-AIX] Installation fehlgeschlagen, versuche manuelle Extraktion...")
+                    # Wenn alles fehlschlägt, extrahiere manuell
+                    extract_cmd = f'cd "{self.server_dir}" && tail -n +479 bf2-linuxded-1.5.3153.0-installer.sh | tar -xz -C "{bf2_install_dir}"'
+                    result = run_command(extract_cmd)
+            
+            # Prüfe ob start.sh existiert
+            start_sh = os.path.join(bf2_install_dir, 'start.sh')
+            if not os.path.exists(start_sh):
+                self.update_status('error', 0, f'start.sh nicht gefunden in {bf2_install_dir}')
+                return False
+            os.chmod(start_sh, 0o755)
+            print(f"[BF2-AIX] BF2 Server installiert in {bf2_install_dir}")
+            
+            # Download AIX Mod
+            self.update_status('installing', 50, 'Lade AIX Mod herunter...')
+            aix_url = 'https://www.bf-games.net/downloads/mirror/2347'
+            aix_zip = os.path.join(self.server_dir, 'aix2.0core.zip')
+            if not download_file(aix_url, aix_zip):
+                self.update_status('error', 0, 'Download AIX Mod fehlgeschlagen')
+                return False
+            print(f"[BF2-AIX] AIX Mod Download abgeschlossen: {aix_zip}")
+            
+            # Entpacke AIX Mod
+            self.update_status('installing', 60, 'Entpacke AIX Mod...')
+            if not extract_archive(aix_zip, self.server_dir):
+                self.update_status('error', 0, 'Entpacken AIX Mod fehlgeschlagen')
+                return False
+            print(f"[BF2-AIX] AIX Mod entpackt")
+            
+            # Verschiebe mods-Ordner in den bf2-Ordner
+            mods_src = os.path.join(self.server_dir, 'mods')
+            mods_dst = os.path.join(bf2_install_dir, 'mods')
+            
+            if os.path.exists(mods_src):
+                # Wenn mods-Ordner im bf2-Verzeichnis bereits existiert, lösche ihn
+                if os.path.exists(mods_dst):
+                    shutil.rmtree(mods_dst)
+                # Verschiebe den kompletten mods-Ordner
+                shutil.move(mods_src, mods_dst)
+                print(f"[BF2-AIX] mods-Ordner verschoben: {mods_dst}")
+            else:
+                print(f"[BF2-AIX] WARNUNG: mods-Ordner nicht gefunden bei {mods_src}")
+            
+            # Erstelle Startskript für AIX
+            self.update_status('installing', 70, 'Erstelle Startskript...')
+            start_aix_sh = os.path.join(bf2_install_dir, 'start_aix.sh')
+            with open(start_aix_sh, 'w') as f:
+                f.write(f"""#!/bin/bash
+cd "{bf2_install_dir}"
+./start.sh +modPath mods/aix2.0 +port {self.port}
+""")
+            os.chmod(start_aix_sh, 0o755)
+            print(f"[BF2-AIX] Startskript erstellt: {start_aix_sh}")
+            
+            # Aufräumen
+            self.update_status('installing', 90, 'Räume auf...')
+            for cleanup_file in [bf2_archive, aix_zip, installer_sh]:
+                if os.path.exists(cleanup_file):
+                    os.remove(cleanup_file)
+            
+            self.update_status('complete', 100, 'Installation abgeschlossen!')
+            print(f"[BF2-AIX] Installation erfolgreich abgeschlossen")
             return True
             
         except Exception as e:
             error_msg = f'Fehler: {str(e)}'
-            print(f"[VALHEIM ERROR] {error_msg}")
+            print(f"[BF2-AIX ERROR] {error_msg}")
             import traceback
             traceback.print_exc()
             self.update_status('error', 0, error_msg)
@@ -583,8 +692,8 @@ def get_installer(server_type, server_name, port, ram):
         'minecraft-bedrock': MinecraftBedrockInstaller,
         'beammp': BeamMPInstaller,
         'valheim': ValheimInstaller,
+        'battlefield2-aix': Battlefield2AIXInstaller,
     }
-    
     installer_class = installers.get(server_type)
     if installer_class:
         return installer_class(server_name, port, ram)
@@ -962,10 +1071,16 @@ def start_gameserver(name):
             return jsonify({'success': False, 'error': 'Server nicht gefunden'}), 404
         
         server_dir = server.get('directory')
-        start_script = os.path.join(server_dir, 'start.sh')
+        server_type = server.get('type')
+        
+        # Bestimme das richtige Startskript basierend auf dem Servertyp
+        if server_type == 'battlefield2-aix':
+            start_script = os.path.join(server_dir, 'bf2', 'start_aix.sh')
+        else:
+            start_script = os.path.join(server_dir, 'start.sh')
         
         if not os.path.exists(start_script):
-            return jsonify({'success': False, 'error': 'Start-Skript nicht gefunden'}), 404
+            return jsonify({'success': False, 'error': f'Start-Skript nicht gefunden: {start_script}'}), 404
         
         # Start server in screen session
         screen_cmd = f"screen -dmS {name} bash {start_script}"
@@ -1035,7 +1150,14 @@ def restart_gameserver(name):
             return jsonify({'success': False, 'error': 'Server nicht gefunden'}), 404
         
         server_dir = server.get('directory')
-        start_script = os.path.join(server_dir, 'start.sh')
+        server_type = server.get('type')
+        
+        # Bestimme das richtige Startskript basierend auf dem Servertyp
+        if server_type == 'battlefield2-aix':
+            start_script = os.path.join(server_dir, 'bf2', 'start_aix.sh')
+        else:
+            start_script = os.path.join(server_dir, 'start.sh')
+            
         screen_cmd = f"screen -dmS {name} bash {start_script}"
         run_command(screen_cmd)
         
@@ -1194,6 +1316,7 @@ def get_config_file_path(server_type, server_dir):
         'minecraft-bedrock': os.path.join(server_dir, 'server.properties'),
         'beammp': os.path.join(server_dir, 'ServerConfig.toml'),
         'valheim': os.path.join(server_dir, 'start.sh'),
+        'battlefield2-aix': os.path.join(server_dir, 'bf2', 'mods', 'aix2.0', 'settings', 'serversettings.con'),
     }
     return config_files.get(server_type, os.path.join(server_dir, 'config.txt'))
 
