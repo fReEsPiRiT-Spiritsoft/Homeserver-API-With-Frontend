@@ -8,5 +8,8 @@ psutil==5.9.6
 # SSH Terminal Support
 paramiko==3.4.0
 
+# Encryption for credentials
+cryptography==41.0.7
+
 # Note: All other dependencies (urllib, zipfile, tarfile, shutil, threading)
 # are part of Python's standard library and don't need to be installed.

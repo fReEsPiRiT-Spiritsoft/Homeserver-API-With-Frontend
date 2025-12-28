@@ -67,6 +67,11 @@
                     <i class="fab fa-docker"></i>
                     <span>Docker <span class="wip-badge">WIP</span></span>
                 </a>
+                <div style="border-top: 1px solid var(--border); margin: 1rem 0; padding-top: 1rem;"></div>
+                <a href="#settings" class="nav-item" data-section="settings">
+                    <i class="fas fa-cog"></i>
+                    <span>Einstellungen</span>
+                </a>
             </nav>
         </aside>
 
@@ -78,7 +83,7 @@
                 <div class="header-actions">
                     <div class="system-status">
                         <span class="status-dot online"></span>
-                        <span>System Online</span>
+                        <!-- <span>System Online</span> -->
                     </div>
                     <button class="btn-icon" onclick="refreshAll()">
                         <i class="fas fa-sync-alt"></i>
@@ -531,6 +536,84 @@
                     </div>
                 </div>
             </section>
+
+            <!-- Settings Section -->
+            <section id="settings" class="content-section">
+                <div class="card">
+                    <h3><i class="fas fa-cog"></i> Systemeinstellungen</h3>
+                    <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+                        Konfigurieren Sie die Verbindungseinstellungen für Ihren Linux-Server. Diese Daten werden verschlüsselt gespeichert und für automatische sudo-Befehle verwendet.
+                    </p>
+                </div>
+
+                <div class="card">
+                    <h3><i class="fas fa-server"></i> Linux Server Credentials</h3>
+                    <div id="credentials-status" style="margin-bottom: 1rem;"></div>
+                    
+                    <div class="form-group">
+                        <label for="linux-username">
+                            <i class="fas fa-user"></i> Benutzername
+                        </label>
+                        <input type="text" id="linux-username" placeholder="z.B. patty" autocomplete="username">
+                        <small style="color: var(--text-secondary); display: block; margin-top: 0.5rem;">
+                            Der Benutzername auf Ihrem Linux-Server
+                        </small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="linux-password">
+                            <i class="fas fa-lock"></i> Passwort
+                        </label>
+                        <input type="password" id="linux-password" placeholder="Ihr Linux-Passwort" autocomplete="current-password">
+                        <small style="color: var(--text-secondary); display: block; margin-top: 0.5rem;">
+                            Wird für sudo-Befehle benötigt (verschlüsselt gespeichert)
+                        </small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="linux-host">
+                            <i class="fas fa-network-wired"></i> Server-Adresse
+                        </label>
+                        <input type="text" id="linux-host" placeholder="192.168.0.205 oder homeserver.local" value="192.168.0.205">
+                        <small style="color: var(--text-secondary); display: block; margin-top: 0.5rem;">
+                            IP-Adresse oder Hostname Ihres Servers
+                        </small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="linux-port">
+                            <i class="fas fa-plug"></i> SSH Port
+                        </label>
+                        <input type="number" id="linux-port" placeholder="22" value="22" min="1" max="65535">
+                        <small style="color: var(--text-secondary); display: block; margin-top: 0.5rem;">
+                            Standard: 22
+                        </small>
+                    </div>
+
+                    <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+                        <button class="btn btn-success" onclick="saveLinuxCredentials()">
+                            <i class="fas fa-save"></i> Speichern
+                        </button>
+                        <button class="btn btn-info" onclick="testLinuxConnection()">
+                            <i class="fas fa-plug"></i> Verbindung testen
+                        </button>
+                        <button class="btn btn-danger" onclick="deleteLinuxCredentials()">
+                            <i class="fas fa-trash"></i> Löschen
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3><i class="fas fa-shield-alt"></i> Sicherheitshinweise</h3>
+                    <ul style="color: var(--text-secondary); line-height: 1.8;">
+                        <li><i class="fas fa-check" style="color: var(--success); margin-right: 0.5rem;"></i> Ihre Credentials werden verschlüsselt gespeichert</li>
+                        <li><i class="fas fa-check" style="color: var(--success); margin-right: 0.5rem;"></i> Passwörter werden niemals im Klartext übertragen</li>
+                        <li><i class="fas fa-check" style="color: var(--success); margin-right: 0.5rem;"></i> Nur für sudo-Befehle verwendet</li>
+                        <li><i class="fas fa-info-circle" style="color: var(--info); margin-right: 0.5rem;"></i> Verwenden Sie einen dedizierten Server-Account</li>
+                        <li><i class="fas fa-info-circle" style="color: var(--info); margin-right: 0.5rem;"></i> Ändern Sie das Passwort regelmäßig</li>
+                    </ul>
+                </div>
+            </section>
         </main>
     </div>
 
@@ -570,12 +653,52 @@
             <!-- Installation Progress -->
             <div id="gameserver-install-progress" style="display: none;">
                 <div class="install-progress">
-                    <h4>Installation läuft...</h4>
-                    <div class="progress-bar">
-                        <div id="install-progress-fill" class="progress-fill"></div>
+                    <div class="install-header">
+                        <div class="install-icon" id="install-icon">
+                            <i class="fas fa-spinner fa-spin"></i>
+                        </div>
+                        <h4 id="install-title">Installation läuft...</h4>
                     </div>
-                    <p id="install-status-message">Bereite Installation vor...</p>
-                    <p id="install-progress-percent">0%</p>
+                    
+                    <div class="progress-container">
+                        <div class="progress-bar">
+                            <div id="install-progress-fill" class="progress-fill"></div>
+                        </div>
+                        <span class="progress-text" id="install-progress-percent">0%</span>
+                    </div>
+                    
+                    <div class="install-status">
+                        <div class="status-message" id="install-status-message">
+                            <i class="fas fa-circle-notch fa-spin"></i>
+                            <span>Bereite Installation vor...</span>
+                        </div>
+                    </div>
+                    
+                    <div class="install-error" id="install-error" style="display: none;">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <div class="error-content">
+                            <h5>Fehler bei der Installation</h5>
+                            <p id="install-error-message"></p>
+                        </div>
+                    </div>
+                    
+                    <div class="install-actions" id="install-actions" style="display: none;">
+                        <button class="btn btn-success" onclick="closeInstallModal()">
+                            <i class="fas fa-check"></i> Fertig
+                        </button>
+                        <button class="btn btn-secondary" onclick="closeModal('addGameserverModal'); loadGameservers();">
+                            <i class="fas fa-list"></i> Zur Übersicht
+                        </button>
+                    </div>
+                    
+                    <div class="install-actions" id="install-error-actions" style="display: none;">
+                        <button class="btn btn-danger" onclick="closeInstallModal()">
+                            <i class="fas fa-times"></i> Schließen
+                        </button>
+                        <button class="btn btn-secondary" onclick="retryInstallation()">
+                            <i class="fas fa-redo"></i> Erneut versuchen
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

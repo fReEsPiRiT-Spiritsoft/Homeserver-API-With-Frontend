@@ -13,12 +13,16 @@ import zipfile
 import tarfile
 import time
 from pathlib import Path
+import base64
+from cryptography.fernet import Fernet
+import re
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-change-this-in-production'
 CORS(app, supports_credentials=True)
 
 # SSH connections storage (in-memory, use Redis in production)
+# Each connection has: client, channel, host, username, current_dir
 ssh_connections = {}
 
 # Gameserver installation status
@@ -28,6 +32,14 @@ gameserver_installations = {}
 DNS_FILE = 'data/dns_entries.json'
 WEBSPACE_FILE = 'data/webspaces.json'
 GAMESERVER_FILE = 'data/gameservers.json'
+CREDENTIALS_FILE = 'data/credentials.enc'
+
+# Encryption key for credentials (in production, use environment variable!)
+ENCRYPTION_KEY = base64.urlsafe_b64encode(app.secret_key.encode().ljust(32)[:32])
+cipher_suite = Fernet(ENCRYPTION_KEY)
+
+# Linux credentials storage
+linux_credentials = None
 
 # Gameserver directories - uses local directory by default
 # For production, create /opt/gameservers and set permissions, then change this path
@@ -91,9 +103,110 @@ def save_json_file(filename, data):
     except:
         return False
 
+def save_credentials(username, password, host='localhost', port=22):
+    """Save encrypted credentials"""
+    global linux_credentials
+    try:
+        credentials = {
+            'username': username,
+            'password': password,
+            'host': host,
+            'port': port
+        }
+        # Encrypt credentials
+        encrypted = cipher_suite.encrypt(json.dumps(credentials).encode())
+        with open(CREDENTIALS_FILE, 'wb') as f:
+            f.write(encrypted)
+        # Store in memory
+        linux_credentials = credentials
+        return True
+    except Exception as e:
+        print(f"Error saving credentials: {e}")
+        return False
+
+def load_credentials():
+    """Load encrypted credentials"""
+    global linux_credentials
+    try:
+        if os.path.exists(CREDENTIALS_FILE):
+            with open(CREDENTIALS_FILE, 'rb') as f:
+                encrypted = f.read()
+            decrypted = cipher_suite.decrypt(encrypted)
+            linux_credentials = json.loads(decrypted.decode())
+            return linux_credentials
+        return None
+    except Exception as e:
+        print(f"Error loading credentials: {e}")
+        return None
+
+def delete_credentials():
+    """Delete stored credentials"""
+    global linux_credentials
+    try:
+        if os.path.exists(CREDENTIALS_FILE):
+            os.remove(CREDENTIALS_FILE)
+        linux_credentials = None
+        return True
+    except Exception as e:
+        print(f"Error deleting credentials: {e}")
+        return False
+
+def run_sudo_command(command, use_credentials=True):
+    """Execute a sudo command using stored credentials"""
+    if use_credentials and linux_credentials:
+        try:
+            # Use SSH to execute command with password
+            ssh = paramiko.SSHClient()
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            ssh.connect(
+                hostname=linux_credentials['host'],
+                port=linux_credentials['port'],
+                username=linux_credentials['username'],
+                password=linux_credentials['password'],
+                timeout=10
+            )
+            
+            # Execute with sudo
+            if not command.startswith('sudo'):
+                command = f'sudo -S {command}'
+            
+            stdin, stdout, stderr = ssh.exec_command(command, get_pty=True)
+            
+            # Send password if prompted
+            stdin.write(linux_credentials['password'] + '\n')
+            stdin.flush()
+            
+            output = stdout.read().decode('utf-8', errors='ignore')
+            error = stderr.read().decode('utf-8', errors='ignore')
+            exit_code = stdout.channel.recv_exit_status()
+            
+            ssh.close()
+            
+            return {
+                'success': exit_code == 0,
+                'output': output,
+                'error': error,
+                'returncode': exit_code
+            }
+        except Exception as e:
+            print(f"SSH sudo command error: {e}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
+    else:
+        # Fallback to local command
+        return run_command(command)
+
 def download_file(url, dest_path, callback=None):
     """Download file with progress tracking"""
     try:
+        print(f"[DOWNLOAD] Starte Download: {url} -> {dest_path}")
+        
+        # Create opener that follows redirects
+        opener = urllib.request.build_opener(urllib.request.HTTPRedirectHandler)
+        urllib.request.install_opener(opener)
+        
         def reporthook(block_num, block_size, total_size):
             if callback and total_size > 0:
                 downloaded = block_num * block_size
@@ -101,9 +214,18 @@ def download_file(url, dest_path, callback=None):
                 callback(percent)
         
         urllib.request.urlretrieve(url, dest_path, reporthook)
-        return True
+        
+        if os.path.exists(dest_path):
+            file_size = os.path.getsize(dest_path)
+            print(f"[DOWNLOAD] Download erfolgreich: {dest_path} ({file_size} bytes)")
+            return True
+        else:
+            print(f"[DOWNLOAD ERROR] Datei existiert nicht nach Download: {dest_path}")
+            return False
     except Exception as e:
-        print(f"Download error: {e}")
+        print(f"[DOWNLOAD ERROR] Download fehlgeschlagen: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 def extract_archive(archive_path, extract_to):
@@ -158,8 +280,18 @@ class GameserverInstaller:
     
     def create_directory(self):
         """Create server directory"""
-        os.makedirs(self.server_dir, exist_ok=True)
-        return True
+        try:
+            print(f"[INSTALLER] Erstelle Verzeichnis: {self.server_dir}")
+            os.makedirs(self.server_dir, exist_ok=True)
+            if os.path.exists(self.server_dir):
+                print(f"[INSTALLER] Verzeichnis erfolgreich erstellt: {self.server_dir}")
+                return True
+            else:
+                print(f"[INSTALLER ERROR] Verzeichnis existiert nicht nach Erstellung: {self.server_dir}")
+                return False
+        except Exception as e:
+            print(f"[INSTALLER ERROR] Fehler beim Erstellen des Verzeichnisses: {str(e)}")
+            raise
     
     def install(self):
         """Override this in subclasses"""
@@ -170,17 +302,23 @@ class MinecraftJavaInstaller(GameserverInstaller):
     
     def install(self):
         try:
+            print(f"[MC-JAVA] Starte Installation für {self.server_name}")
             self.update_status('installing', 10, 'Erstelle Verzeichnis...')
             self.create_directory()
+            print(f"[MC-JAVA] Verzeichnis erstellt: {self.server_dir}")
             
             self.update_status('installing', 20, 'Lade Minecraft Server herunter...')
             # Download latest Minecraft server jar
             server_jar_url = 'https://piston-data.mojang.com/v1/objects/145ff0858209bcfc164859ba735d4199aafa1eea/server.jar'
             server_jar_path = os.path.join(self.server_dir, 'server.jar')
             
+            print(f"[MC-JAVA] Lade Server-Datei herunter: {server_jar_url}")
             if not download_file(server_jar_url, server_jar_path):
-                self.update_status('error', 0, 'Download fehlgeschlagen')
+                error_msg = 'Download fehlgeschlagen'
+                print(f"[MC-JAVA ERROR] {error_msg}")
+                self.update_status('error', 0, error_msg)
                 return False
+            print(f"[MC-JAVA] Download abgeschlossen: {server_jar_path}")
             
             self.update_status('installing', 50, 'Erstelle Start-Skript...')
             # Create start script
@@ -212,12 +350,18 @@ pvp=true
             properties_path = os.path.join(self.server_dir, 'server.properties')
             with open(properties_path, 'w') as f:
                 f.write(properties)
+            print(f"[MC-JAVA] Konfiguration erstellt: {properties_path}")
             
             self.update_status('complete', 100, 'Installation abgeschlossen!')
+            print(f"[MC-JAVA] Installation erfolgreich abgeschlossen")
             return True
             
         except Exception as e:
-            self.update_status('error', 0, f'Fehler: {str(e)}')
+            error_msg = f'Fehler: {str(e)}'
+            print(f"[MC-JAVA ERROR] {error_msg}")
+            import traceback
+            traceback.print_exc()
+            self.update_status('error', 0, error_msg)
             return False
 
 class MinecraftBedrockInstaller(GameserverInstaller):
@@ -225,24 +369,35 @@ class MinecraftBedrockInstaller(GameserverInstaller):
     
     def install(self):
         try:
+            print(f"[MC-BEDROCK] Starte Installation für {self.server_name}")
             self.update_status('installing', 10, 'Erstelle Verzeichnis...')
             self.create_directory()
+            print(f"[MC-BEDROCK] Verzeichnis erstellt: {self.server_dir}")
             
             self.update_status('installing', 20, 'Lade Bedrock Server herunter...')
             # Download Bedrock server
             bedrock_url = 'https://minecraft.azureedge.net/bin-linux/bedrock-server-1.20.51.01.zip'
             zip_path = os.path.join(self.server_dir, 'bedrock.zip')
             
+            print(f"[MC-BEDROCK] Lade Server-Datei herunter: {bedrock_url}")
             if not download_file(bedrock_url, zip_path):
-                self.update_status('error', 0, 'Download fehlgeschlagen')
+                error_msg = 'Download fehlgeschlagen'
+                print(f"[MC-BEDROCK ERROR] {error_msg}")
+                self.update_status('error', 0, error_msg)
                 return False
+            print(f"[MC-BEDROCK] Download abgeschlossen: {zip_path}")
             
             self.update_status('installing', 50, 'Entpacke Server-Dateien...')
+            print(f"[MC-BEDROCK] Entpacke Archiv...")
             if not extract_archive(zip_path, self.server_dir):
-                self.update_status('error', 0, 'Entpacken fehlgeschlagen')
+                error_msg = 'Entpacken fehlgeschlagen'
+                print(f"[MC-BEDROCK ERROR] {error_msg}")
+                self.update_status('error', 0, error_msg)
                 return False
+            print(f"[MC-BEDROCK] Archiv entpackt")
             
             os.remove(zip_path)
+            print(f"[MC-BEDROCK] Archiv gelöscht")
             
             self.update_status('installing', 70, 'Konfiguriere Server...')
             # Make bedrock_server executable
@@ -269,12 +424,18 @@ LD_LIBRARY_PATH=. ./bedrock_server
                 content = content.replace('server-port=19132', f'server-port={self.port}')
                 with open(properties_path, 'w') as f:
                     f.write(content)
+            print(f"[MC-BEDROCK] server.properties aktualisiert")
             
             self.update_status('complete', 100, 'Installation abgeschlossen!')
+            print(f"[MC-BEDROCK] Installation erfolgreich abgeschlossen")
             return True
             
         except Exception as e:
-            self.update_status('error', 0, f'Fehler: {str(e)}')
+            error_msg = f'Fehler: {str(e)}'
+            print(f"[MC-BEDROCK ERROR] {error_msg}")
+            import traceback
+            traceback.print_exc()
+            self.update_status('error', 0, error_msg)
             return False
 
 class BeamMPInstaller(GameserverInstaller):
@@ -282,19 +443,43 @@ class BeamMPInstaller(GameserverInstaller):
     
     def install(self):
         try:
+            print(f"[BEAMMP] Starte Installation für {self.server_name}")
             self.update_status('installing', 10, 'Erstelle Verzeichnis...')
             self.create_directory()
+            print(f"[BEAMMP] Verzeichnis erstellt: {self.server_dir}")
             
             self.update_status('installing', 20, 'Lade BeamMP Server herunter...')
-            # Download BeamMP server (Linux version)
-            beammp_url = 'https://github.com/BeamMP/BeamMP-Server/releases/latest/download/BeamMP-Server-linux'
+            # Download BeamMP server (Debian 12 version)
+            # Note: Update version number as needed from https://github.com/BeamMP/BeamMP-Server/releases
+            beammp_url = 'https://github.com/BeamMP/BeamMP-Server/releases/download/v3.9.0/BeamMP-Server.debian.12.x86_64'
             server_path = os.path.join(self.server_dir, 'BeamMP-Server')
             
+            print(f"[BEAMMP] Lade Server-Datei herunter: {beammp_url}")
             if not download_file(beammp_url, server_path):
-                self.update_status('error', 0, 'Download fehlgeschlagen')
+                error_msg = 'Download fehlgeschlagen - Prüfe Internetverbindung'
+                print(f"[BEAMMP ERROR] {error_msg}")
+                self.update_status('error', 0, error_msg)
                 return False
             
+            # Verify download
+            if not os.path.exists(server_path):
+                error_msg = 'Download-Datei nicht gefunden'
+                print(f"[BEAMMP ERROR] {error_msg}")
+                self.update_status('error', 0, error_msg)
+                return False
+                
+            file_size = os.path.getsize(server_path)
+            if file_size < 100000:  # Mindestens 100KB
+                error_msg = f'Download unvollständig (nur {file_size} bytes)'
+                print(f"[BEAMMP ERROR] {error_msg}")
+                self.update_status('error', 0, error_msg)
+                return False
+                
+            print(f"[BEAMMP] Download erfolgreich: {server_path} ({file_size} bytes)")
+            
+            self.update_status('installing', 40, 'Setze Berechtigungen...')
             os.chmod(server_path, 0o755)
+            print(f"[BEAMMP] Berechtigungen gesetzt")
             
             self.update_status('installing', 50, 'Erstelle Konfiguration...')
             # Create ServerConfig.toml
@@ -324,12 +509,18 @@ cd "{self.server_dir}"
             with open(start_script_path, 'w') as f:
                 f.write(start_script)
             os.chmod(start_script_path, 0o755)
+            print(f"[BEAMMP] Start-Skript erstellt: {start_script_path}")
             
             self.update_status('complete', 100, 'Installation abgeschlossen!')
+            print(f"[BEAMMP] Installation erfolgreich abgeschlossen")
             return True
             
         except Exception as e:
-            self.update_status('error', 0, f'Fehler: {str(e)}')
+            error_msg = f'Fehler: {str(e)}'
+            print(f"[BEAMMP ERROR] {error_msg}")
+            import traceback
+            traceback.print_exc()
+            self.update_status('error', 0, error_msg)
             return False
 
 class ValheimInstaller(GameserverInstaller):
@@ -337,8 +528,10 @@ class ValheimInstaller(GameserverInstaller):
     
     def install(self):
         try:
+            print(f"[VALHEIM] Starte Installation für {self.server_name}")
             self.update_status('installing', 10, 'Erstelle Verzeichnis...')
             self.create_directory()
+            print(f"[VALHEIM] Verzeichnis erstellt: {self.server_dir}")
             
             self.update_status('installing', 20, 'Installiere SteamCMD...')
             # Install via SteamCMD (requires steamcmd to be installed)
@@ -369,12 +562,18 @@ export SteamAppId=892970
             with open(start_script_path, 'w') as f:
                 f.write(start_script)
             os.chmod(start_script_path, 0o755)
+            print(f"[VALHEIM] Start-Skript erstellt: {start_script_path}")
             
             self.update_status('complete', 100, 'Installation abgeschlossen!')
+            print(f"[VALHEIM] Installation erfolgreich abgeschlossen")
             return True
             
         except Exception as e:
-            self.update_status('error', 0, f'Fehler: {str(e)}')
+            error_msg = f'Fehler: {str(e)}'
+            print(f"[VALHEIM ERROR] {error_msg}")
+            import traceback
+            traceback.print_exc()
+            self.update_status('error', 0, error_msg)
             return False
 
 def get_installer(server_type, server_name, port, ram):
@@ -684,18 +883,49 @@ def create_gameserver():
     installation_id = installer.installation_id
     
     def install_thread():
-        installer.install()
-        # Update server status after installation
-        servers = load_json_file(GAMESERVER_FILE)
-        for s in servers:
-            if s['name'] == server_name:
-                status = gameserver_installations.get(installation_id, {})
-                if status.get('status') == 'complete':
-                    s['status'] = 'stopped'
-                else:
+        try:
+            print(f"[GAMESERVER] Starte Installation von {server_name} (Typ: {server_type})")
+            print(f"[GAMESERVER] Installation ID: {installation_id}")
+            print(f"[GAMESERVER] Zielverzeichnis: {installer.server_dir}")
+            
+            success = installer.install()
+            
+            # Update server status after installation
+            servers = load_json_file(GAMESERVER_FILE)
+            for s in servers:
+                if s['name'] == server_name:
+                    status = gameserver_installations.get(installation_id, {})
+                    if status.get('status') == 'complete':
+                        s['status'] = 'stopped'
+                        print(f"[GAMESERVER] Installation von {server_name} erfolgreich abgeschlossen")
+                    else:
+                        s['status'] = 'error'
+                        error_msg = status.get('message', 'Unbekannter Fehler')
+                        print(f"[GAMESERVER] Installation von {server_name} fehlgeschlagen: {error_msg}")
+                    break
+            save_json_file(GAMESERVER_FILE, servers)
+            
+        except Exception as e:
+            error_msg = f"Kritischer Fehler im Install-Thread: {str(e)}"
+            print(f"[GAMESERVER ERROR] {error_msg}")
+            import traceback
+            traceback.print_exc()
+            
+            # Update installation status with error
+            gameserver_installations[installation_id] = {
+                'status': 'error',
+                'progress': 0,
+                'message': error_msg,
+                'timestamp': time.time()
+            }
+            
+            # Update server status in database
+            servers = load_json_file(GAMESERVER_FILE)
+            for s in servers:
+                if s['name'] == server_name:
                     s['status'] = 'error'
-                break
-        save_json_file(GAMESERVER_FILE, servers)
+                    break
+            save_json_file(GAMESERVER_FILE, servers)
     
     thread = threading.Thread(target=install_thread)
     thread.daemon = True
@@ -1110,10 +1340,10 @@ def get_apache_logs():
 def shutdown_system():
     """Shutdown the system"""
     try:
-        result = run_command('sudo shutdown -h now')
+        result = run_sudo_command('shutdown -h now')
         return jsonify({
-            'success': True,
-            'message': 'System wird heruntergefahren...'
+            'success': result['success'],
+            'message': 'System wird heruntergefahren...' if result['success'] else result.get('error', 'Unknown error')
         })
     except Exception as e:
         return jsonify({
@@ -1125,10 +1355,10 @@ def shutdown_system():
 def reboot_system():
     """Reboot the system"""
     try:
-        result = run_command('sudo reboot')
+        result = run_sudo_command('reboot')
         return jsonify({
-            'success': True,
-            'message': 'System wird neu gestartet...'
+            'success': result['success'],
+            'message': 'System wird neu gestartet...' if result['success'] else result.get('error', 'Unknown error')
         })
     except Exception as e:
         return jsonify({
@@ -1140,10 +1370,10 @@ def reboot_system():
 def suspend_system():
     """Put system into suspend mode"""
     try:
-        result = run_command('sudo systemctl suspend')
+        result = run_sudo_command('systemctl suspend')
         return jsonify({
-            'success': True,
-            'message': 'System geht in den Ruhemodus...'
+            'success': result['success'],
+            'message': 'System geht in den Ruhemodus...' if result['success'] else result.get('error', 'Unknown error')
         })
     except Exception as e:
         return jsonify({
@@ -1206,22 +1436,53 @@ def ssh_connect():
             timeout=10
         )
         
-        # Generate session ID (use proper session management in production)
+        # Open an interactive shell channel (no ANSI colors)
+        channel = ssh.invoke_shell(term='dumb', width=120, height=40)
+        channel.settimeout(2)
+        
+        # Disable colors and special formatting
+        channel.send('export TERM=dumb\n')
+        channel.send('export PS1=""\n')  # Disable prompt in output
+        channel.send('unset PROMPT_COMMAND\n')
+        time.sleep(0.5)
+        
+        # Clear initial output
+        if channel.recv_ready():
+            channel.recv(65536)
+        
+        # Get initial working directory
+        channel.send('pwd\n')
+        time.sleep(0.3)
+        output = ''
+        if channel.recv_ready():
+            output = channel.recv(4096).decode('utf-8', errors='ignore')
+        
+        # Extract directory from output
+        lines = output.strip().split('\n')
+        current_dir = '~'
+        for line in lines:
+            if line.startswith('/'):
+                current_dir = line.strip()
+                break
+        
+        # Generate session ID
         session_id = f"{username}@{host}:{port}"
         
-        # Store SSH connection
+        # Store SSH connection with channel
         ssh_connections[session_id] = {
             'client': ssh,
+            'channel': channel,
             'host': host,
             'port': port,
-            'username': username
+            'username': username,
+            'current_dir': current_dir
         }
         
         return jsonify({
             'success': True,
             'message': 'SSH Verbindung erfolgreich',
             'session_id': session_id,
-            'prompt': f'{username}@{host}:~$'
+            'prompt': f'{username}@{host}:{current_dir}$'
         })
     except paramiko.AuthenticationException:
         return jsonify({
@@ -1284,21 +1545,96 @@ def ssh_execute_command():
         }), 401
     
     try:
-        ssh = ssh_connections[session_id]['client']
+        conn = ssh_connections[session_id]
+        channel = conn['channel']
         
-        # Execute command
-        stdin, stdout, stderr = ssh.exec_command(command, timeout=30)
+        # Clear any pending output
+        if channel.recv_ready():
+            channel.recv(65536)
         
-        # Get output
-        output = stdout.read().decode('utf-8', errors='ignore')
-        error = stderr.read().decode('utf-8', errors='ignore')
-        exit_status = stdout.channel.recv_exit_status()
+        # Send command
+        channel.send(command + '\n')
+        
+        # Wait for command to execute
+        time.sleep(0.5)
+        
+        # Collect output
+        output = ''
+        max_wait = 10  # Maximum 10 seconds
+        start_time = time.time()
+        
+        while time.time() - start_time < max_wait:
+            if channel.recv_ready():
+                chunk = channel.recv(4096).decode('utf-8', errors='ignore')
+                output += chunk
+                time.sleep(0.1)
+            else:
+                # Check if there might be more data
+                time.sleep(0.2)
+                if channel.recv_ready():
+                    continue
+                else:
+                    break
+        
+        # Remove ANSI escape codes and control characters
+        # Remove ANSI escape sequences
+        ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+        output = ansi_escape.sub('', output)
+        # Remove carriage returns
+        output = output.replace('\r', '')
+        # Remove bell character
+        output = output.replace('\x07', '')
+        
+        # Get current directory
+        channel.send('pwd\n')
+        time.sleep(0.2)
+        pwd_output = ''
+        if channel.recv_ready():
+            pwd_output = channel.recv(4096).decode('utf-8', errors='ignore')
+        
+        # Extract current directory from pwd output
+        current_dir = conn.get('current_dir', '~')
+        for line in pwd_output.split('\n'):
+            line = line.strip()
+            if line.startswith('/'):
+                current_dir = line
+                conn['current_dir'] = current_dir
+                break
+        
+        # Clean output (remove command echo and prompt)
+        lines = output.split('\n')
+        cleaned_lines = []
+        skip_first = True
+        
+        for line in lines:
+            # Skip command echo (first line that contains the command)
+            if skip_first and command.strip() in line:
+                skip_first = False
+                continue
+            
+            # Skip empty lines and prompts
+            line_stripped = line.strip()
+            if not line_stripped:
+                continue
+            if line_stripped.endswith('$') and len(line_stripped) < 50:
+                continue
+                
+            cleaned_lines.append(line.rstrip())
+        
+        output = '\n'.join(cleaned_lines).strip()
+        
+        # Create dynamic prompt
+        username = conn['username']
+        host = conn['host']
+        prompt = f'{username}@{host}:{current_dir}$'
         
         return jsonify({
             'success': True,
             'output': output,
-            'error': error,
-            'exit_status': exit_status
+            'error': '',
+            'exit_status': 0,
+            'prompt': prompt,
+            'current_dir': current_dir
         })
     except Exception as e:
         return jsonify({
@@ -1354,6 +1690,148 @@ def execute_terminal_command():
         'error': result.get('error', '')
     })
 
+# Settings API - Credentials Management
+@app.route('/api/settings/credentials', methods=['GET'])
+def get_credentials():
+    """Get stored credentials (without password)"""
+    try:
+        creds = load_credentials()
+        if creds:
+            return jsonify({
+                'success': True,
+                'credentials': {
+                    'username': creds.get('username'),
+                    'host': creds.get('host'),
+                    'port': creds.get('port')
+                    # Password is NEVER returned for security
+                }
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'No credentials stored'
+            })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/settings/credentials', methods=['POST'])
+def save_credentials_endpoint():
+    """Save Linux credentials (encrypted)"""
+    try:
+        data = request.get_json()
+        username = data.get('username')
+        password = data.get('password')
+        host = data.get('host', 'localhost')
+        port = data.get('port', 22)
+        
+        if not username or not password:
+            return jsonify({
+                'success': False,
+                'error': 'Username and password required'
+            }), 400
+        
+        success = save_credentials(username, password, host, port)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'Credentials saved successfully'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to save credentials'
+            }), 500
+            
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/settings/credentials', methods=['DELETE'])
+def delete_credentials_endpoint():
+    """Delete stored credentials"""
+    try:
+        success = delete_credentials()
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'Credentials deleted successfully'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to delete credentials'
+            }), 500
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/settings/test-connection', methods=['POST'])
+def test_connection():
+    """Test SSH connection and sudo access"""
+    try:
+        data = request.get_json()
+        username = data.get('username')
+        password = data.get('password')
+        host = data.get('host', 'localhost')
+        port = data.get('port', 22)
+        
+        if not username or not password or not host:
+            return jsonify({
+                'success': False,
+                'error': 'Username, password and host required'
+            }), 400
+        
+        # Test SSH connection
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect(
+            hostname=host,
+            port=port,
+            username=username,
+            password=password,
+            timeout=10
+        )
+        
+        # Test sudo access
+        stdin, stdout, stderr = ssh.exec_command('sudo -n whoami', get_pty=True)
+        stdin.write(password + '\n')
+        stdin.flush()
+        
+        output = stdout.read().decode('utf-8', errors='ignore').strip()
+        has_sudo = 'root' in output.lower()
+        
+        ssh.close()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Connection successful',
+            'has_sudo': has_sudo
+        })
+        
+    except paramiko.AuthenticationException:
+        return jsonify({
+            'success': False,
+            'error': 'Authentication failed - check username/password'
+        }), 401
+    except paramiko.SSHException as e:
+        return jsonify({
+            'success': False,
+            'error': f'SSH error: {str(e)}'
+        }), 500
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Connection error: {str(e)}'
+        }), 500
+
 # Health check
 @app.route('/api/health', methods=['GET'])
 def health_check():
@@ -1376,5 +1854,12 @@ if __name__ == '__main__':
     print("  - Power Management: POST /api/power/shutdown, /api/power/reboot, /api/power/suspend, /api/power/wake")
     print("  - Terminal: POST /api/terminal/execute")
     print("\nNote: Some operations require sudo privileges.")
+    
+    # Load credentials if available
+    creds = load_credentials()
+    if creds:
+        print(f"\n✓ Linux Credentials geladen für: {creds.get('username')}@{creds.get('host')}")
+    else:
+        print("\n⚠️  Keine Credentials gespeichert. Bitte in den Einstellungen konfigurieren.")
     
     app.run(host='0.0.0.0', port=5000, debug=True)

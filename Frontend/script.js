@@ -391,20 +391,53 @@ function showAddGameserverModal() {
     document.getElementById('gameserver-install-progress').style.display = 'none';
 }
 
+// Store current installation data for retry
+let currentInstallationData = null;
+
 async function addGameserver() {
+    console.log('[GAMESERVER] addGameserver() aufgerufen');
+    
     const type = document.getElementById('gameserver-type').value;
     const name = document.getElementById('gameserver-name').value;
     const port = document.getElementById('gameserver-port').value;
     const ram = document.getElementById('gameserver-ram').value;
+    
+    console.log('[GAMESERVER] Eingaben:', { type, name, port, ram });
     
     if (!name || !port || !ram) {
         showNotification('error', 'Bitte alle Felder ausfüllen');
         return;
     }
     
+    // Store for potential retry
+    currentInstallationData = { type, name, port, ram };
+    
+    // Show modal if not already visible
+    const modal = document.getElementById('addGameserverModal');
+    console.log('[GAMESERVER] Modal gefunden:', modal !== null);
+    if (modal && !modal.classList.contains('active')) {
+        modal.classList.add('active');
+        console.log('[GAMESERVER] Modal aktiviert');
+    }
+    
+    // Reset progress UI
+    console.log('[GAMESERVER] Resette Progress UI');
+    resetInstallProgress();
+    
     // Show progress UI
-    document.getElementById('gameserver-form').style.display = 'none';
-    document.getElementById('gameserver-install-progress').style.display = 'block';
+    const formEl = document.getElementById('gameserver-form');
+    const progressEl = document.getElementById('gameserver-install-progress');
+    
+    if (formEl) {
+        formEl.style.display = 'none';
+        console.log('[GAMESERVER] Formular versteckt');
+    }
+    if (progressEl) {
+        progressEl.style.display = 'block';
+        console.log('[GAMESERVER] Progress angezeigt');
+    }
+    
+    updateInstallStatus('info', 'Sende Installations-Anfrage...', 0);
     
     try {
         const response = await fetch(`${API_BASE}/gameserver/create`, {
@@ -419,24 +452,120 @@ async function addGameserver() {
         if (data.success) {
             showNotification('success', 'Server-Installation gestartet');
             
+            // Lade Server sofort, damit der neue Server mit Status "installing" erscheint
+            await loadGameservers();
+            
             // Poll installation status
             const installationId = data.installation_id;
             pollInstallationStatus(installationId);
         } else {
-            showNotification('error', data.error || 'Fehler beim Erstellen');
-            document.getElementById('gameserver-form').style.display = 'block';
-            document.getElementById('gameserver-install-progress').style.display = 'none';
+            showInstallError(data.error || 'Fehler beim Erstellen des Servers');
         }
     } catch (error) {
         console.error('Error creating gameserver:', error);
-        showNotification('error', 'Fehler beim Erstellen');
-        document.getElementById('gameserver-form').style.display = 'block';
-        document.getElementById('gameserver-install-progress').style.display = 'none';
+        showInstallError('Verbindungsfehler zum Server. Bitte prüfen Sie Ihre Netzwerkverbindung.');
     }
 }
 
+function retryInstallation() {
+    if (currentInstallationData) {
+        resetInstallProgress();
+        addGameserver();
+    }
+}
+
+function resetInstallProgress() {
+    try {
+        const installIcon = document.getElementById('install-icon');
+        const installTitle = document.getElementById('install-title');
+        const progressFill = document.getElementById('install-progress-fill');
+        const progressPercent = document.getElementById('install-progress-percent');
+        const installError = document.getElementById('install-error');
+        const installActions = document.getElementById('install-actions');
+        const installErrorActions = document.getElementById('install-error-actions');
+        const statusMessage = document.getElementById('install-status-message');
+        
+        if (installIcon) installIcon.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        if (installTitle) installTitle.textContent = 'Installation läuft...';
+        if (progressFill) progressFill.style.width = '0%';
+        if (progressPercent) progressPercent.textContent = '0%';
+        if (installError) installError.style.display = 'none';
+        if (installActions) installActions.style.display = 'none';
+        if (installErrorActions) installErrorActions.style.display = 'none';
+        if (statusMessage) statusMessage.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i><span>Bereite Installation vor...</span>';
+    } catch (error) {
+        console.error('Error resetting install progress:', error);
+    }
+}
+
+function updateInstallStatus(type, message, progress) {
+    try {
+        const statusEl = document.getElementById('install-status-message');
+        const icons = {
+            'info': 'fa-circle-notch fa-spin',
+            'success': 'fa-check-circle',
+            'error': 'fa-exclamation-circle'
+        };
+        
+        if (statusEl) {
+            statusEl.innerHTML = `<i class="fas ${icons[type]}"></i><span>${message}</span>`;
+        }
+        
+        if (progress !== undefined) {
+            const progressFill = document.getElementById('install-progress-fill');
+            const progressPercent = document.getElementById('install-progress-percent');
+            if (progressFill) progressFill.style.width = `${progress}%`;
+            if (progressPercent) progressPercent.textContent = `${progress}%`;
+        }
+    } catch (error) {
+        console.error('Error updating install status:', error);
+    }
+}
+
+function showInstallError(errorMessage) {
+    document.getElementById('install-icon').innerHTML = '<i class="fas fa-times-circle" style="color: var(--danger);"></i>';
+    document.getElementById('install-title').textContent = 'Installation fehlgeschlagen';
+    document.getElementById('install-error').style.display = 'flex';
+    document.getElementById('install-error-message').textContent = errorMessage;
+    document.getElementById('install-error-actions').style.display = 'flex';
+    updateInstallStatus('error', 'Installation abgebrochen', 0);
+}
+
+function showInstallSuccess() {
+    document.getElementById('install-icon').innerHTML = '<i class="fas fa-check-circle" style="color: var(--success);"></i>';
+    document.getElementById('install-title').textContent = 'Installation erfolgreich!';
+    document.getElementById('install-actions').style.display = 'flex';
+    updateInstallStatus('success', 'Server wurde erfolgreich installiert', 100);
+}
+
+function closeInstallModal() {
+    closeModal('addGameserverModal');
+    loadGameservers();
+    resetGameserverForm();
+}
+
+function resetGameserverForm() {
+    document.getElementById('gameserver-type').value = 'minecraft-java';
+    document.getElementById('gameserver-name').value = '';
+    document.getElementById('gameserver-port').value = '25565';
+    document.getElementById('gameserver-ram').value = '4';
+    document.getElementById('gameserver-form').style.display = 'block';
+    document.getElementById('gameserver-install-progress').style.display = 'none';
+}
+
 async function pollInstallationStatus(installationId) {
+    let pollCount = 0;
+    const maxPolls = 300; // 5 Minuten bei 1 Sekunde Intervall
+    
     const pollInterval = setInterval(async () => {
+        pollCount++;
+        
+        if (pollCount > maxPolls) {
+            clearInterval(pollInterval);
+            showInstallError('Installation-Timeout: Die Installation hat zu lange gedauert.');
+            return;
+        }
+        
         try {
             const response = await fetch(`${API_BASE}/gameserver/installation/${installationId}`);
             const data = await response.json();
@@ -445,37 +574,32 @@ async function pollInstallationStatus(installationId) {
                 const status = data.status;
                 const progress = status.progress || 0;
                 const message = status.message || '';
+                const statusType = status.status; // 'installing', 'complete', 'error'
                 
-                // Update UI
-                document.getElementById('install-progress-fill').style.width = `${progress}%`;
-                document.getElementById('install-progress-percent').textContent = `${progress}%`;
-                document.getElementById('install-status-message').textContent = message;
-                
-                // Check if complete or error
-                if (status.status === 'complete') {
+                // Update UI basierend auf Status
+                if (statusType === 'complete') {
                     clearInterval(pollInterval);
-                    showNotification('success', 'Server erfolgreich installiert!');
-                    setTimeout(() => {
-                        closeModal('addGameserverModal');
+                    showInstallSuccess();
+                    loadGameservers();
+                } else if (statusType === 'error') {
+                    clearInterval(pollInterval);
+                    showInstallError(message || 'Unbekannter Fehler bei der Installation');
+                    loadGameservers(); // Aktualisiere Liste
+                } else if (statusType === 'installing') {
+                    updateInstallStatus('info', message, progress);
+                    // Aktualisiere Gameserver-Liste alle 10 Sekunden während Installation
+                    if (pollCount % 10 === 0) {
                         loadGameservers();
-                        // Reset form
-                        document.getElementById('gameserver-form').style.display = 'block';
-                        document.getElementById('gameserver-install-progress').style.display = 'none';
-                    }, 2000);
-                } else if (status.status === 'error') {
-                    clearInterval(pollInterval);
-                    showNotification('error', `Installation fehlgeschlagen: ${message}`);
-                    setTimeout(() => {
-                        document.getElementById('gameserver-form').style.display = 'block';
-                        document.getElementById('gameserver-install-progress').style.display = 'none';
-                    }, 3000);
+                    }
                 }
+            } else {
+                // Fehler beim Abrufen des Status
+                console.warn('Could not fetch installation status');
             }
         } catch (error) {
             console.error('Error polling installation status:', error);
-            clearInterval(pollInterval);
         }
-    }, 1000);
+    }, 1000); // Poll every second
 }
 
 async function loadGameservers() {
@@ -968,6 +1092,11 @@ async function executeTerminalCommand() {
             if (data.error) {
                 addToTerminal(data.error, 'error');
             }
+            
+            // Update prompt with current directory
+            if (data.prompt) {
+                document.getElementById('terminal-prompt').textContent = data.prompt;
+            }
         } else {
             addToTerminal(`Fehler: ${data.error}`, 'error');
             
@@ -1166,3 +1295,157 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+
+// Settings Management Functions
+async function loadLinuxCredentials() {
+    try {
+        const response = await apiRequest(`${API_BASE}/settings/credentials`);
+        if (response.success && response.credentials) {
+            document.getElementById('linux-username').value = response.credentials.username || '';
+            document.getElementById('linux-host').value = response.credentials.host || '192.168.0.205';
+            document.getElementById('linux-port').value = response.credentials.port || '22';
+            // Password wird nicht zurückgegeben aus Sicherheitsgründen
+            
+            updateCredentialsStatus('success', 'Credentials sind gespeichert');
+        } else {
+            updateCredentialsStatus('warning', 'Keine Credentials gespeichert');
+        }
+    } catch (error) {
+        console.error('Fehler beim Laden der Credentials:', error);
+        updateCredentialsStatus('warning', 'Keine Credentials gespeichert');
+    }
+}
+
+async function saveLinuxCredentials() {
+    const username = document.getElementById('linux-username').value;
+    const password = document.getElementById('linux-password').value;
+    const host = document.getElementById('linux-host').value;
+    const port = document.getElementById('linux-port').value;
+    
+    if (!username || !password) {
+        showNotification('warning', 'Bitte Benutzername und Passwort eingeben');
+        return;
+    }
+    
+    if (!host) {
+        showNotification('warning', 'Bitte Server-Adresse eingeben');
+        return;
+    }
+    
+    try {
+        const response = await apiRequest(`${API_BASE}/settings/credentials`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                username: username,
+                password: password,
+                host: host,
+                port: parseInt(port) || 22
+            })
+        });
+        
+        if (response.success) {
+            showNotification('success', 'Credentials erfolgreich gespeichert');
+            updateCredentialsStatus('success', 'Credentials sind gespeichert und aktiv');
+            // Passwortfeld leeren aus Sicherheitsgründen
+            document.getElementById('linux-password').value = '';
+        } else {
+            showNotification('danger', response.error || 'Fehler beim Speichern');
+            updateCredentialsStatus('error', 'Fehler beim Speichern');
+        }
+    } catch (error) {
+        showNotification('danger', 'Verbindungsfehler: ' + error.message);
+        updateCredentialsStatus('error', 'Verbindungsfehler');
+    }
+}
+
+async function testLinuxConnection() {
+    const username = document.getElementById('linux-username').value;
+    const password = document.getElementById('linux-password').value;
+    const host = document.getElementById('linux-host').value;
+    const port = document.getElementById('linux-port').value;
+    
+    if (!username || !password || !host) {
+        showNotification('warning', 'Bitte alle Felder ausfüllen');
+        return;
+    }
+    
+    showNotification('info', 'Teste Verbindung...');
+    
+    try {
+        const response = await apiRequest(`${API_BASE}/settings/test-connection`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                username: username,
+                password: password,
+                host: host,
+                port: parseInt(port) || 22
+            })
+        });
+        
+        if (response.success) {
+            showNotification('success', '✓ Verbindung erfolgreich! sudo-Rechte: ' + (response.has_sudo ? 'Ja' : 'Nein'));
+            updateCredentialsStatus('success', 'Verbindung erfolgreich getestet');
+        } else {
+            showNotification('danger', 'Verbindung fehlgeschlagen: ' + (response.error || 'Unbekannter Fehler'));
+            updateCredentialsStatus('error', 'Verbindungstest fehlgeschlagen');
+        }
+    } catch (error) {
+        showNotification('danger', 'Verbindungsfehler: ' + error.message);
+        updateCredentialsStatus('error', 'Verbindungstest fehlgeschlagen');
+    }
+}
+
+async function deleteLinuxCredentials() {
+    if (!confirm('Möchten Sie die gespeicherten Credentials wirklich löschen?')) {
+        return;
+    }
+    
+    try {
+        const response = await apiRequest(`${API_BASE}/settings/credentials`, {
+            method: 'DELETE'
+        });
+        
+        if (response.success) {
+            showNotification('success', 'Credentials erfolgreich gelöscht');
+            document.getElementById('linux-username').value = '';
+            document.getElementById('linux-password').value = '';
+            document.getElementById('linux-host').value = '192.168.0.205';
+            document.getElementById('linux-port').value = '22';
+            updateCredentialsStatus('warning', 'Keine Credentials gespeichert');
+        } else {
+            showNotification('danger', response.error || 'Fehler beim Löschen');
+        }
+    } catch (error) {
+        showNotification('danger', 'Verbindungsfehler: ' + error.message);
+    }
+}
+
+function updateCredentialsStatus(type, message) {
+    const statusEl = document.getElementById('credentials-status');
+    const colors = {
+        success: 'var(--success)',
+        warning: 'var(--warning)',
+        error: 'var(--danger)',
+        info: 'var(--info)'
+    };
+    const icons = {
+        success: 'fa-check-circle',
+        warning: 'fa-exclamation-triangle',
+        error: 'fa-times-circle',
+        info: 'fa-info-circle'
+    };
+    
+    statusEl.innerHTML = `
+        <div style="padding: 1rem; background: rgba(${type === 'success' ? '16, 185, 129' : type === 'warning' ? '245, 158, 11' : type === 'error' ? '239, 68, 68' : '6, 182, 212'}, 0.1); 
+                    border-left: 3px solid ${colors[type]}; border-radius: 8px; display: flex; align-items: center; gap: 0.75rem;">
+            <i class="fas ${icons[type]}" style="color: ${colors[type]}; font-size: 1.25rem;"></i>
+            <span style="color: var(--text);">${message}</span>
+        </div>
+    `;
+}
