@@ -5,17 +5,31 @@ Eine umfassende Benutzeroberfläche zur Verwaltung Ihres Home/Gameservers mit vo
 ## Features
 
 - **Dashboard**: Übersicht über Systemressourcen (CPU, RAM, Disk, Temperatur)
+- <img width="1905" height="935" alt="grafik" src="https://github.com/user-attachments/assets/afc079c3-0168-41c0-9caa-5117c2baa218" />
+
 - **DNS Server Verwaltung**: DNS-Einträge hinzufügen, bearbeiten und löschen
+- <img width="1919" height="562" alt="grafik" src="https://github.com/user-attachments/assets/c4c3923f-2076-4bca-89c6-960e6ab4d4e3" />
+
 - **AdBlock/Pi-hole**: Pi-hole Verwaltung und Statistiken
+- <img width="1919" height="714" alt="grafik" src="https://github.com/user-attachments/assets/46f484bc-5d48-44da-914f-361df9ede709" />
+
 - **Gameserver Management** ⭐ NEU:
+- <img width="1919" height="948" alt="grafik" src="https://github.com/user-attachments/assets/fb508135-6e10-4fc6-8f90-86e718136411" />
+
   - **Automatische Installation**: Minecraft Java/Bedrock, BeamMP, Valheim
   - **Config-Editor**: Direkte Bearbeitung von server.properties & Co.
   - **Live Console**: Echtzeit-Konsole mit Befehlseingabe
   - **Server-Kontrolle**: Start, Stop, Restart per Klick
   - **Status-Überwachung**: Live-Status jedes Servers
 - **Webspaces**: Apache2 Virtual Hosts erstellen und verwalten
+- <img width="1918" height="740" alt="grafik" src="https://github.com/user-attachments/assets/29102d7a-551c-43ff-b9cb-9d47934b560d" />
+
 - **Apache2**: Service-Kontrolle und Log-Viewer
+- <img width="1919" height="772" alt="grafik" src="https://github.com/user-attachments/assets/7e9f0c47-d64c-4bb9-8169-664a06290627" />
+
 - **SSH Terminal**: Sichere SSH-Verbindung zum Server
+- <img width="1900" height="929" alt="grafik" src="https://github.com/user-attachments/assets/b9466214-d311-4783-a190-dc563442f31e" />
+
 - **Power Management**: Herunterfahren, Neustart, Suspend, Wake-on-LAN
 
 ## Installation
