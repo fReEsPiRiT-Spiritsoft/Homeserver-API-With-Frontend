@@ -209,16 +209,20 @@ function checkSystemStatus() {
 function updateSystemStatus(online) {
     systemOnline = online;
     const statusDot = document.querySelector('.status-dot');
-    const statusText = document.querySelector('.system-status span');
+    const statusPulse = document.querySelector('.status-pulse');
+    const statusText = document.querySelector('.status-text');
+    const statusBadge = document.getElementById('system-status-badge');
     
     if (online) {
         statusDot.classList.remove('offline');
         statusDot.classList.add('online');
-        if (statusText) statusText.textContent = 'System Online';
+        if (statusText) statusText.textContent = 'Online';
+        if (statusBadge) statusBadge.title = 'Backend verbunden';
     } else {
         statusDot.classList.add('offline');
         statusDot.classList.remove('online');
-        if (statusText) statusText.textContent = 'System Offline';
+        if (statusText) statusText.textContent = 'Offline';
+        if (statusBadge) statusBadge.title = 'Backend nicht erreichbar';
         
         // Grey out stats when offline
         document.querySelectorAll('.stat-value').forEach(el => {

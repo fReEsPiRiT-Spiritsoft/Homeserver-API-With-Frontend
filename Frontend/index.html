@@ -81,11 +81,14 @@
             <header class="header">
                 <h1 id="page-title">Dashboard</h1>
                 <div class="header-actions">
-                    <div class="system-status">
-                        <span class="status-dot online"></span>
-                        <!-- <span>System Online</span> -->
+                    <div class="system-status" id="system-status-badge" title="Verbindungsstatus zum Backend">
+                        <span class="status-indicator">
+                            <span class="status-dot online"></span>
+                            <span class="status-pulse"></span>
+                        </span>
+                        <span class="status-text">Online</span>
                     </div>
-                    <button class="btn-icon" onclick="refreshAll()">
+                    <button class="btn-icon" onclick="refreshAll()" title="Aktualisieren">
                         <i class="fas fa-sync-alt"></i>
                     </button>
                 </div>
