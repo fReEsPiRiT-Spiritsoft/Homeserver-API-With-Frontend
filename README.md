@@ -14,11 +14,13 @@ Eine umfassende Benutzeroberfläche zur Verwaltung Ihres Home/Gameservers mit vo
 - <img width="1919" height="714" alt="grafik" src="https://github.com/user-attachments/assets/46f484bc-5d48-44da-914f-361df9ede709" />
 
 - **File Manager** ⭐ NEU:
+- <img width="2420" height="1291" alt="grafik" src="https://github.com/user-attachments/assets/33807489-7721-4df7-9a97-4136387dc412" />
   - **Datei-Browser**: Durchsuchen Sie das gesamte Dateisystem
   - **Quick-Access**: Schnellzugriff auf wichtige Verzeichnisse (Root, Home, Web, Gameservers)
   - **Datei-Operationen**: Upload, Download, Bearbeiten, Löschen, Umbenennen
   - **Ordner-Verwaltung**: Erstellen Sie neue Ordner und verschieben Sie Dateien
   - **Code-Editor**: Syntax-Highlighting für Konfigurationsdateien
+  - <img width="2385" height="1269" alt="grafik" src="https://github.com/user-attachments/assets/ff0b9e54-bae7-4b22-ba2f-afb9eea7902d" />
   - **Berechtigungen**: Anzeige von Datei-Berechtigungen und Größen
 
 - **Gameserver Management** ⭐ NEU:
