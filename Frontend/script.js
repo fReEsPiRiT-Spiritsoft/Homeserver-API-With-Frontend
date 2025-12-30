@@ -1188,16 +1188,8 @@ async function executeTerminalCommand() {
         return;
     }
     
-    // Auto-fill sudo password if command starts with sudo
+    // Simple command handling - no automatic password filling
     const originalCommand = command;
-    if (command.startsWith('sudo ') && !command.includes('<<<')) {
-        const credentials = loadSSHCredentialsFromLocal();
-        if (credentials && credentials.password) {
-            // Use here-string to pass password to sudo
-            command = `echo '${credentials.password}' | sudo -S ${command.substring(5)}`;
-            console.log('Auto-filling sudo password from saved credentials');
-        }
-    }
     
     // Add to history (original command)
     terminalHistory.unshift(originalCommand);
@@ -1221,7 +1213,7 @@ async function executeTerminalCommand() {
             },
             body: JSON.stringify({ 
                 session_id: sshSessionId,
-                command: command 
+                command: command
             }),
             credentials: 'include'
         });
@@ -1280,6 +1272,61 @@ function addToTerminal(text, type) {
     line.textContent = text;
     terminal.appendChild(line);
     terminal.scrollTop = terminal.scrollHeight;
+}
+
+// Check if output contains a password prompt
+function isPasswordPrompt(output) {
+    const lowercaseOutput = output.toLowerCase();
+    return lowercaseOutput.includes('password:') || 
+           lowercaseOutput.includes('passwort:') ||
+           lowercaseOutput.includes('[sudo]') ||
+           lowercaseOutput.includes('password for');
+}
+
+// Auto-fill password when prompt is detected
+async function autoFillPassword() {
+    const credentials = loadSSHCredentialsFromLocal();
+    if (!credentials || !credentials.password) {
+        console.log('No saved password available for auto-fill');
+        return;
+    }
+    
+    // Send password immediately without waiting (prompt is active NOW)
+    try {
+        const response = await fetch(`${API_BASE}/ssh/execute`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ 
+                session_id: sshSessionId,
+                command: credentials.password  // Backend adds \n automatically
+            }),
+            credentials: 'include'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Display masked password in terminal (matching actual length)
+            const maskedPassword = '*'.repeat(credentials.password.length);
+            addToTerminal(maskedPassword, 'output');
+            
+            if (data.output) {
+                addToTerminal(data.output, 'output');
+            }
+            if (data.error) {
+                addToTerminal(data.error, 'error');
+            }
+            
+            // Update prompt with current directory
+            if (data.prompt) {
+                document.getElementById('terminal-prompt').textContent = data.prompt;
+            }
+        }
+    } catch (error) {
+        console.error('Error auto-filling password:', error);
+    }
 }
 
 function clearTerminal() {

@@ -1688,10 +1688,11 @@ def ssh_connect():
         channel = ssh.invoke_shell(term='dumb', width=120, height=40)
         channel.settimeout(2)
         
-        # Disable colors and special formatting
+        # Disable colors, special formatting, and history expansion
         channel.send('export TERM=dumb\n')
         channel.send('export PS1=""\n')  # Disable prompt in output
         channel.send('unset PROMPT_COMMAND\n')
+        channel.send('set +H\n')  # Disable history expansion (fixes ! in passwords)
         time.sleep(0.5)
         
         # Clear initial output
@@ -1802,23 +1803,42 @@ def ssh_execute_command():
         
         # Send command
         channel.send(command + '\n')
-        
-        # Wait for command to execute
         time.sleep(0.5)
         
-        # Collect output
+        # Collect output and watch for password prompt
         output = ''
-        max_wait = 10  # Maximum 10 seconds
+        max_wait = 15
         start_time = time.time()
+        password_sent = False
+        
+        # Get user's stored password if available
+        stored_password = None
+        if linux_credentials and linux_credentials.get('password'):
+            try:
+                stored_password = cipher_suite.decrypt(linux_credentials['password'].encode()).decode()
+            except:
+                pass
         
         while time.time() - start_time < max_wait:
             if channel.recv_ready():
                 chunk = channel.recv(4096).decode('utf-8', errors='ignore')
                 output += chunk
+                
+                # Check if sudo is asking for password
+                if not password_sent and stored_password:
+                    lower_chunk = chunk.lower()
+                    if 'password:' in lower_chunk or '[sudo]' in lower_chunk or 'password for' in lower_chunk:
+                        # Password prompt detected! Send password immediately
+                        time.sleep(0.2)  # Brief wait for prompt to fully display
+                        channel.send(stored_password + '\n')
+                        password_sent = True
+                        time.sleep(1.0)  # Wait for command execution
+                        continue
+                
                 time.sleep(0.1)
             else:
                 # Check if there might be more data
-                time.sleep(0.2)
+                time.sleep(0.3)
                 if channel.recv_ready():
                     continue
                 else:
