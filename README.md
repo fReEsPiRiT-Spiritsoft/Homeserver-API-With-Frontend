@@ -13,6 +13,14 @@ Eine umfassende Benutzeroberfläche zur Verwaltung Ihres Home/Gameservers mit vo
 - **AdBlock/Pi-hole**: Pi-hole Verwaltung und Statistiken
 - <img width="1919" height="714" alt="grafik" src="https://github.com/user-attachments/assets/46f484bc-5d48-44da-914f-361df9ede709" />
 
+- **File Manager** ⭐ NEU:
+  - **Datei-Browser**: Durchsuchen Sie das gesamte Dateisystem
+  - **Quick-Access**: Schnellzugriff auf wichtige Verzeichnisse (Root, Home, Web, Gameservers)
+  - **Datei-Operationen**: Upload, Download, Bearbeiten, Löschen, Umbenennen
+  - **Ordner-Verwaltung**: Erstellen Sie neue Ordner und verschieben Sie Dateien
+  - **Code-Editor**: Syntax-Highlighting für Konfigurationsdateien
+  - **Berechtigungen**: Anzeige von Datei-Berechtigungen und Größen
+
 - **Gameserver Management** ⭐ NEU:
 - <img width="1919" height="948" alt="grafik" src="https://github.com/user-attachments/assets/fb508135-6e10-4fc6-8f90-86e718136411" />
 <img width="527" height="582" alt="grafik" src="https://github.com/user-attachments/assets/5da0e9bd-8769-4ca8-a4af-d373501a282e" />
@@ -227,6 +235,93 @@ screen -S ServerName -X quit
 └── ...
 ```
 
+## File Manager 📁
+
+Der integrierte File Manager bietet vollständigen Zugriff auf das Dateisystem des Servers.
+
+### Quick-Access-Navigation
+
+Über die Quick-Access-Buttons gelangen Sie direkt zu den wichtigsten Verzeichnissen:
+
+- **🏠 Root** (`/`) - Zugriff auf das Root-Verzeichnis
+- **👤 Home** (`/home`) - Home-Verzeichnisse aller Benutzer
+- **🌐 Web** (`/var/www`) - Webserver-Verzeichnisse und Webspaces
+- **🎮 Game** (`/opt/gameservers`) - Alle Gameserver-Installationen
+
+Der aktive Pfad wird hervorgehoben, und Sie können jederzeit zwischen den Bereichen wechseln.
+
+### Dateiverwaltung
+
+**Dateien hochladen:**
+1. Klicken Sie auf **"Hochladen"** in der Toolbar
+2. Wählen Sie eine oder mehrere Dateien aus
+3. Die Dateien werden in das aktuelle Verzeichnis hochgeladen
+
+**Dateien herunterladen:**
+- Rechtsklick auf eine Datei → **"Herunterladen"**
+
+**Dateien bearbeiten:**
+1. Rechtsklick auf eine Datei → **"Bearbeiten"**
+2. Der Code-Editor öffnet sich mit Syntax-Highlighting
+3. Nehmen Sie Ihre Änderungen vor
+4. Klicken Sie auf **"Speichern"**
+
+**Unterstützte Dateitypen für Bearbeitung:**
+- Konfigurationsdateien (`.conf`, `.ini`, `.properties`, `.toml`, `.yaml`, `.yml`)
+- Code-Dateien (`.js`, `.py`, `.php`, `.html`, `.css`, `.sh`)
+- Text-Dateien (`.txt`, `.log`, `.md`)
+
+**Dateien/Ordner löschen:**
+- Rechtsklick auf Datei/Ordner → **"Löschen"**
+- Bestätigen Sie die Sicherheitsabfrage
+
+**Dateien/Ordner umbenennen:**
+1. Rechtsklick → **"Umbenennen"**
+2. Geben Sie den neuen Namen ein
+3. Drücken Sie Enter oder klicken Sie **"Speichern"**
+
+**Neue Ordner erstellen:**
+1. Klicken Sie auf **"Neuer Ordner"** in der Toolbar
+2. Geben Sie den Ordner-Namen ein
+3. Der Ordner wird im aktuellen Verzeichnis erstellt
+
+**Dateien verschieben:**
+- Wählen Sie eine Datei aus
+- Ziehen Sie sie per Drag & Drop in einen anderen Ordner
+- Oder: Rechtsklick → **"Verschieben"** → Ziel auswählen
+
+### Datei-Informationen
+
+Für jede Datei/jeden Ordner werden angezeigt:
+- **Name** und **Typ** (Datei/Ordner)
+- **Größe** (in KB/MB/GB)
+- **Änderungsdatum** (letzte Bearbeitung)
+- **Berechtigungen** (Unix-Permissions, z.B. 755)
+
+### Sicherheit
+
+Der File Manager respektiert die Dateisystem-Berechtigungen:
+- Sie können nur Dateien bearbeiten, für die Sie Schreibrechte haben
+- Systemdateien sind vor versehentlichem Löschen geschützt
+- Pfad-Traversal-Angriffe werden automatisch blockiert
+
+### Verwendungstipps
+
+**Gameserver konfigurieren:**
+1. Navigieren Sie zu `/opt/gameservers/IhrServerName/`
+2. Bearbeiten Sie `server.properties`, `ServerConfig.toml` etc. direkt
+3. Starten Sie den Server neu, um Änderungen zu übernehmen
+
+**Webspace bearbeiten:**
+1. Gehen Sie zu `/var/www/IhreWebsite/`
+2. Laden Sie HTML/CSS/JS-Dateien hoch
+3. Bearbeiten Sie Konfigurationsdateien direkt im Browser
+
+**Logs einsehen:**
+- Gameserver-Logs: `/opt/gameservers/ServerName/logs/`
+- Apache-Logs: `/var/log/apache2/`
+- System-Logs: `/var/log/`
+
 ### Fehlersuche
 
 **Server startet nicht:**
@@ -286,6 +381,15 @@ Das Backend stellt folgende REST-API zur Verfügung:
 - `GET /api/gameserver/list` - Gameserver auflisten
 - `POST /api/gameserver/create` - Gameserver erstellen
 - `POST /api/gameserver/<name>/<action>` - Gameserver steuern
+- `POST /api/filemanager/list` - Dateien und Ordner auflisten
+- `POST /api/filemanager/upload` - Datei hochladen
+- `POST /api/filemanager/download` - Datei herunterladen
+- `POST /api/filemanager/read` - Dateiinhalt lesen
+- `POST /api/filemanager/write` - Dateiinhalt speichern
+- `POST /api/filemanager/delete` - Datei/Ordner löschen
+- `POST /api/filemanager/rename` - Datei/Ordner umbenennen
+- `POST /api/filemanager/create_folder` - Neuen Ordner erstellen
+- `POST /api/filemanager/move` - Datei/Ordner verschieben
 - `GET /api/webspace/list` - Webspaces auflisten
 - `POST /api/webspace/create` - Webspace erstellen
 - `DELETE /api/webspace/delete` - Webspace löschen
