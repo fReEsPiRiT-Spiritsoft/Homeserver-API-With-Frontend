@@ -1080,32 +1080,73 @@ def start_gameserver(name):
             start_script = os.path.join(server_dir, 'start.sh')
         
         if not os.path.exists(start_script):
-            return jsonify({'success': False, 'error': f'Start-Skript nicht gefunden: {start_script}'}), 404
+            error_msg = f'Start-Skript nicht gefunden: {start_script}'
+            # Log error
+            log_error_to_file(name, error_msg)
+            return jsonify({'success': False, 'error': error_msg}), 404
         
-        # Start server in screen session
-        screen_cmd = f"screen -dmS {name} bash {start_script}"
+        # Check if screen session already exists
+        check_screen = f"screen -list | grep -q {name}"
+        screen_exists = run_command(check_screen)
+        if screen_exists.get('returncode') == 0:
+            error_msg = f'Server {name} läuft bereits'
+            return jsonify({'success': False, 'error': error_msg}), 400
+        
+        # Start server in screen session with logging
+        log_file = os.path.join(server_dir, 'server.log')
+        screen_cmd = f"screen -dmS {name} bash -c 'bash {start_script} 2>&1 | tee -a {log_file}'"
         result = run_command(screen_cmd)
         
         if result['success']:
-            # Update server status
-            for s in servers:
-                if s['name'] == name:
-                    s['status'] = 'running'
-                    break
-            save_json_file(GAMESERVER_FILE, servers)
+            # Wait a moment and check if server is actually running
+            time.sleep(2)
+            check_result = run_command(f"screen -list | grep {name}")
             
-            return jsonify({
-                'success': True,
-                'message': f'Server {name} wurde gestartet'
-            })
+            if check_result.get('returncode') == 0:
+                # Update server status
+                for s in servers:
+                    if s['name'] == name:
+                        s['status'] = 'running'
+                        if 'last_error' in s:
+                            del s['last_error']
+                        break
+                save_json_file(GAMESERVER_FILE, servers)
+                
+                return jsonify({
+                    'success': True,
+                    'message': f'Server {name} wurde gestartet'
+                })
+            else:
+                # Server started but crashed immediately
+                error_msg = 'Server ist sofort nach dem Start abgestürzt'
+                error_log = get_server_error_log(name, server_dir)
+                log_error_to_file(name, f"{error_msg}\n{error_log}")
+                
+                # Update server status
+                for s in servers:
+                    if s['name'] == name:
+                        s['status'] = 'error'
+                        s['last_error'] = error_msg
+                        break
+                save_json_file(GAMESERVER_FILE, servers)
+                
+                return jsonify({
+                    'success': False,
+                    'error': error_msg,
+                    'log': error_log
+                }), 500
         else:
+            error_msg = result.get('error', 'Start fehlgeschlagen')
+            log_error_to_file(name, error_msg)
             return jsonify({
                 'success': False,
-                'error': result.get('error', 'Start fehlgeschlagen')
+                'error': error_msg
             }), 500
             
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        error_msg = str(e)
+        log_error_to_file(name, f'Exception beim Start: {error_msg}')
+        return jsonify({'success': False, 'error': error_msg}), 500
 
 @app.route('/api/gameserver/<name>/stop', methods=['POST'])
 def stop_gameserver(name):
@@ -1319,6 +1360,90 @@ def get_config_file_path(server_type, server_dir):
         'battlefield2-aix': os.path.join(server_dir, 'bf2', 'mods', 'aix2.0', 'settings', 'serversettings.con'),
     }
     return config_files.get(server_type, os.path.join(server_dir, 'config.txt'))
+
+def log_error_to_file(server_name, error_message):
+    """Log an error to the server's error log file"""
+    try:
+        error_log_dir = os.path.join('data', 'error_logs')
+        os.makedirs(error_log_dir, exist_ok=True)
+        error_log_file = os.path.join(error_log_dir, f'{server_name}_errors.log')
+        
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        with open(error_log_file, 'a', encoding='utf-8') as f:
+            f.write(f'\n[{timestamp}] {error_message}\n')
+            f.write('-' * 80 + '\n')
+    except Exception as e:
+        print(f"Fehler beim Schreiben des Error-Logs: {e}")
+
+def get_server_error_log(server_name, server_dir):
+    """Get the last lines from server log files"""
+    log_content = []
+    
+    # Check various possible log file locations
+    possible_logs = [
+        os.path.join(server_dir, 'server.log'),
+        os.path.join(server_dir, 'logs', 'latest.log'),
+        os.path.join(server_dir, 'logs', 'server.log'),
+        os.path.join(server_dir, 'BeamMP-Server.log'),
+        os.path.join(server_dir, 'valheim.log'),
+    ]
+    
+    for log_file in possible_logs:
+        if os.path.exists(log_file):
+            try:
+                # Get last 100 lines
+                result = run_command(f"tail -n 100 {log_file}")
+                if result.get('success'):
+                    log_content.append(f"=== {os.path.basename(log_file)} ===")
+                    log_content.append(result.get('output', ''))
+            except Exception as e:
+                log_content.append(f"Fehler beim Lesen von {log_file}: {str(e)}")
+    
+    if not log_content:
+        return "Keine Log-Dateien gefunden"
+    
+    return '\n'.join(log_content)
+
+@app.route('/api/gameserver/<name>/logs', methods=['GET'])
+def get_gameserver_logs(name):
+    """Get server logs including error logs"""
+    try:
+        servers = load_json_file(GAMESERVER_FILE)
+        server = next((s for s in servers if s['name'] == name), None)
+        
+        if not server:
+            return jsonify({'success': False, 'error': 'Server nicht gefunden'}), 404
+        
+        server_dir = server.get('directory')
+        
+        # Get server logs
+        server_log = get_server_error_log(name, server_dir)
+        
+        # Get error log from our error log file
+        error_log_file = os.path.join('data', 'error_logs', f'{name}_errors.log')
+        error_log = ''
+        if os.path.exists(error_log_file):
+            try:
+                result = run_command(f"tail -n 50 {error_log_file}")
+                if result.get('success'):
+                    error_log = result.get('output', '')
+            except Exception as e:
+                error_log = f"Fehler beim Lesen des Error-Logs: {str(e)}"
+        
+        # Combine logs
+        combined_log = ''
+        if error_log:
+            combined_log += '=== Fehlerprotokoll ===\n' + error_log + '\n\n'
+        combined_log += '=== Server-Logs ===\n' + server_log
+        
+        return jsonify({
+            'success': True,
+            'logs': combined_log,
+            'last_error': server.get('last_error', '')
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/gameserver/<name>/<action>', methods=['POST'])
 def control_gameserver(name, action):
@@ -1963,6 +2088,303 @@ def health_check():
         'status': 'healthy',
         'timestamp': datetime.now().isoformat()
     })
+
+# Filemanager API
+@app.route('/api/filemanager/list', methods=['POST'])
+def filemanager_list():
+    """List files and directories in a path"""
+    try:
+        data = request.get_json()
+        path = data.get('path', '/')
+        
+        # Normalize path
+        abs_path = os.path.abspath(path)
+        
+        if not os.path.exists(abs_path):
+            return jsonify({'success': False, 'error': 'Path does not exist'}), 404
+        
+        items = []
+        try:
+            for item_name in os.listdir(abs_path):
+                item_path = os.path.join(abs_path, item_name)
+                try:
+                    stat_info = os.stat(item_path)
+                    is_dir = os.path.isdir(item_path)
+                    
+                    items.append({
+                        'name': item_name,
+                        'path': item_path,
+                        'is_directory': is_dir,
+                        'size': stat_info.st_size if not is_dir else 0,
+                        'modified': datetime.fromtimestamp(stat_info.st_mtime).isoformat(),
+                        'permissions': oct(stat_info.st_mode)[-3:],
+                    })
+                except (PermissionError, OSError):
+                    # Skip items we can't access
+                    continue
+            
+            # Sort: directories first, then files, both alphabetically
+            items.sort(key=lambda x: (not x['is_directory'], x['name'].lower()))
+            
+            return jsonify({
+                'success': True,
+                'path': abs_path,
+                'items': items
+            })
+            
+        except PermissionError:
+            return jsonify({'success': False, 'error': 'Permission denied'}), 403
+            
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/filemanager/upload', methods=['POST'])
+def filemanager_upload():
+    """Upload a file"""
+    try:
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'error': 'No file provided'}), 400
+        
+        file = request.files['file']
+        path = request.form.get('path', '/')
+        
+        if file.filename == '':
+            return jsonify({'success': False, 'error': 'No file selected'}), 400
+        
+        abs_path = os.path.abspath(path)
+        
+        # Save file
+        file_path = os.path.join(abs_path, file.filename)
+        file.save(file_path)
+        
+        return jsonify({
+            'success': True,
+            'message': f'File {file.filename} uploaded successfully',
+            'path': file_path
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/filemanager/download', methods=['POST'])
+def filemanager_download():
+    """Download a file"""
+    try:
+        from flask import send_file
+        data = request.get_json()
+        file_path = data.get('path')
+        
+        if not file_path:
+            return jsonify({'success': False, 'error': 'No path provided'}), 400
+        
+        abs_path = os.path.abspath(file_path)
+        
+        if not os.path.exists(abs_path):
+            return jsonify({'success': False, 'error': 'File not found'}), 404
+        
+        if os.path.isdir(abs_path):
+            return jsonify({'success': False, 'error': 'Cannot download directories'}), 400
+        
+        return send_file(abs_path, as_attachment=True)
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/filemanager/read', methods=['POST'])
+def filemanager_read():
+    """Read file content"""
+    try:
+        data = request.get_json()
+        file_path = data.get('path')
+        
+        if not file_path:
+            return jsonify({'success': False, 'error': 'No path provided'}), 400
+        
+        abs_path = os.path.abspath(file_path)
+        
+        if not os.path.exists(abs_path):
+            return jsonify({'success': False, 'error': 'File not found'}), 404
+        
+        if os.path.isdir(abs_path):
+            return jsonify({'success': False, 'error': 'Cannot read directories'}), 400
+        
+        # Check file size (limit to 10MB for editor)
+        file_size = os.path.getsize(abs_path)
+        if file_size > 10 * 1024 * 1024:
+            return jsonify({'success': False, 'error': 'File too large to edit (max 10MB)'}), 400
+        
+        # Try to read as text
+        try:
+            with open(abs_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            return jsonify({
+                'success': True,
+                'content': content,
+                'size': file_size
+            })
+        except UnicodeDecodeError:
+            return jsonify({'success': False, 'error': 'File is not a text file'}), 400
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/filemanager/write', methods=['POST'])
+def filemanager_write():
+    """Write file content"""
+    try:
+        data = request.get_json()
+        file_path = data.get('path')
+        content = data.get('content', '')
+        
+        if not file_path:
+            return jsonify({'success': False, 'error': 'No path provided'}), 400
+        
+        abs_path = os.path.abspath(file_path)
+        
+        # Write file
+        with open(abs_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+        
+        return jsonify({
+            'success': True,
+            'message': 'File saved successfully'
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/filemanager/delete', methods=['POST'])
+def filemanager_delete():
+    """Delete a file or directory"""
+    try:
+        data = request.get_json()
+        file_path = data.get('path')
+        
+        if not file_path:
+            return jsonify({'success': False, 'error': 'No path provided'}), 400
+        
+        abs_path = os.path.abspath(file_path)
+        
+        if not os.path.exists(abs_path):
+            return jsonify({'success': False, 'error': 'Path not found'}), 404
+        
+        # Delete
+        if os.path.isdir(abs_path):
+            shutil.rmtree(abs_path)
+            message = 'Directory deleted successfully'
+        else:
+            os.remove(abs_path)
+            message = 'File deleted successfully'
+        
+        return jsonify({
+            'success': True,
+            'message': message
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/filemanager/rename', methods=['POST'])
+def filemanager_rename():
+    """Rename a file or directory"""
+    try:
+        data = request.get_json()
+        old_path = data.get('old_path')
+        new_name = data.get('new_name')
+        
+        if not old_path or not new_name:
+            return jsonify({'success': False, 'error': 'Missing parameters'}), 400
+        
+        abs_old_path = os.path.abspath(old_path)
+        
+        if not os.path.exists(abs_old_path):
+            return jsonify({'success': False, 'error': 'Path not found'}), 404
+        
+        # Get new path (same directory, new name)
+        directory = os.path.dirname(abs_old_path)
+        new_path = os.path.join(directory, new_name)
+        
+        if os.path.exists(new_path):
+            return jsonify({'success': False, 'error': 'Target already exists'}), 400
+        
+        # Rename
+        os.rename(abs_old_path, new_path)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Renamed successfully',
+            'new_path': new_path
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/filemanager/create_folder', methods=['POST'])
+def filemanager_create_folder():
+    """Create a new folder"""
+    try:
+        data = request.get_json()
+        path = data.get('path')
+        folder_name = data.get('name')
+        
+        if not path or not folder_name:
+            return jsonify({'success': False, 'error': 'Missing parameters'}), 400
+        
+        abs_path = os.path.abspath(path)
+        
+        # Create folder
+        new_folder = os.path.join(abs_path, folder_name)
+        
+        if os.path.exists(new_folder):
+            return jsonify({'success': False, 'error': 'Folder already exists'}), 400
+        
+        os.makedirs(new_folder)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Folder created successfully',
+            'path': new_folder
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/filemanager/move', methods=['POST'])
+def filemanager_move():
+    """Move a file or directory"""
+    try:
+        data = request.get_json()
+        source = data.get('source')
+        destination = data.get('destination')
+        
+        if not source or not destination:
+            return jsonify({'success': False, 'error': 'Missing parameters'}), 400
+        
+        abs_source = os.path.abspath(source)
+        abs_dest = os.path.abspath(destination)
+        
+        if not os.path.exists(abs_source):
+            return jsonify({'success': False, 'error': 'Source not found'}), 404
+        
+        # If destination is a directory, move into it
+        if os.path.isdir(abs_dest):
+            abs_dest = os.path.join(abs_dest, os.path.basename(abs_source))
+        
+        if os.path.exists(abs_dest):
+            return jsonify({'success': False, 'error': 'Destination already exists'}), 400
+        
+        # Move
+        shutil.move(abs_source, abs_dest)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Moved successfully',
+            'new_path': abs_dest
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
     print("Starting Homeserver Control Panel Backend...")

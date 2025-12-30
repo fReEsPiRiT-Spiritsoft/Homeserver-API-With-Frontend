@@ -415,24 +415,71 @@
 
             <!-- File Manager Section (WIP) -->
             <section id="filemanager" class="content-section">
-                <div class="card wip-card">
-                    <div class="wip-header">
-                        <i class="fas fa-folder-open" style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;"></i>
-                        <h2>File Manager</h2>
-                        <span class="wip-badge-large">Work in Progress</span>
+                <div class="filemanager-container">
+                    <!-- File Manager Toolbar -->
+                    <div class="filemanager-toolbar">
+                        <div class="toolbar-left">
+                            <button class="btn btn-primary" onclick="showUploadModal()">
+                                <i class="fas fa-upload"></i>
+                                Hochladen
+                            </button>
+                            <button class="btn btn-success" onclick="showCreateFolderModal()">
+                                <i class="fas fa-folder-plus"></i>
+                                Neuer Ordner
+                            </button>
+                            <button class="btn btn-info" onclick="refreshFileManager()">
+                                <i class="fas fa-sync-alt"></i>
+                                Aktualisieren
+                            </button>
+                        </div>
+                        <div class="toolbar-right">
+                            <div class="view-mode">
+                                <button class="view-btn active" data-view="grid" onclick="switchView('grid')">
+                                    <i class="fas fa-th"></i>
+                                </button>
+                                <button class="view-btn" data-view="list" onclick="switchView('list')">
+                                    <i class="fas fa-list"></i>
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                    <div class="wip-content">
-                        <p>Der File Manager ist derzeit in Entwicklung und wird folgende Features bieten:</p>
-                        <ul class="wip-features">
-                            <li><i class="fas fa-check"></i> Browser-basierter Datei-Explorer</li>
-                            <li><i class="fas fa-check"></i> Dateien hochladen & herunterladen</li>
-                            <li><i class="fas fa-check"></i> Text-Editor für direkte Bearbeitung</li>
-                            <li><i class="fas fa-check"></i> Permissions ändern (chmod)</li>
-                            <li><i class="fas fa-check"></i> Zip/Unzip direkt im Browser</li>
-                            <li><i class="fas fa-check"></i> Drag & Drop Upload</li>
-                            <li><i class="fas fa-check"></i> Datei-Vorschau (Bilder, Videos, PDFs)</li>
-                        </ul>
-                        <p class="wip-eta"><i class="fas fa-clock"></i> Voraussichtliche Implementierung: Q1 2026</p>
+
+                    <!-- Breadcrumb Navigation -->
+                    <div class="filemanager-breadcrumb">
+                        <i class="fas fa-folder-open"></i>
+                        <div id="breadcrumb-path"></div>
+                    </div>
+
+                    <!-- File Drop Zone -->
+                    <div id="file-drop-zone" class="file-drop-zone">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <p>Dateien hierher ziehen oder klicken zum Hochladen</p>
+                        <input type="file" id="file-input" multiple style="display: none;">
+                    </div>
+
+                    <!-- File Grid/List -->
+                    <div id="file-grid" class="file-grid">
+                        <!-- Files will be loaded here -->
+                    </div>
+
+                    <!-- Context Menu -->
+                    <div id="file-context-menu" class="context-menu" style="display: none;">
+                        <div class="context-item" onclick="contextAction('open')">
+                            <i class="fas fa-folder-open"></i> Öffnen
+                        </div>
+                        <div class="context-item" onclick="contextAction('edit')">
+                            <i class="fas fa-edit"></i> Bearbeiten
+                        </div>
+                        <div class="context-item" onclick="contextAction('download')">
+                            <i class="fas fa-download"></i> Herunterladen
+                        </div>
+                        <div class="context-item" onclick="contextAction('rename')">
+                            <i class="fas fa-i-cursor"></i> Umbenennen
+                        </div>
+                        <div class="context-divider"></div>
+                        <div class="context-item danger" onclick="contextAction('delete')">
+                            <i class="fas fa-trash"></i> Löschen
+                        </div>
                     </div>
                 </div>
             </section>
@@ -606,12 +653,25 @@
                 <div class="card">
                     <h3><i class="fas fa-shield-alt"></i> Sicherheitshinweise</h3>
                     <ul style="color: var(--text-secondary); line-height: 1.8;">
-                        <li><i class="fas fa-check" style="color: var(--success); margin-right: 0.5rem;"></i> Ihre Credentials werden verschlüsselt gespeichert</li>
+                        <li><i class="fas fa-check" style="color: var(--success); margin-right: 0.5rem;"></i> Ihre Credentials werden verschlüsselt im LocalStorage gespeichert</li>
                         <li><i class="fas fa-check" style="color: var(--success); margin-right: 0.5rem;"></i> Passwörter werden niemals im Klartext übertragen</li>
-                        <li><i class="fas fa-check" style="color: var(--success); margin-right: 0.5rem;"></i> Nur für sudo-Befehle verwendet</li>
+                        <li><i class="fas fa-check" style="color: var(--success); margin-right: 0.5rem;"></i> Automatisch für Terminal und sudo-Befehle verwendet</li>
+                        <li><i class="fas fa-check" style="color: var(--success); margin-right: 0.5rem;"></i> MAC-Adresse wird ebenfalls lokal gespeichert</li>
                         <li><i class="fas fa-info-circle" style="color: var(--info); margin-right: 0.5rem;"></i> Verwenden Sie einen dedizierten Server-Account</li>
                         <li><i class="fas fa-info-circle" style="color: var(--info); margin-right: 0.5rem;"></i> Ändern Sie das Passwort regelmäßig</li>
                     </ul>
+                    
+                    <div style="margin-top: 1.5rem; padding: 1rem; background: rgba(239, 68, 68, 0.1); border-left: 3px solid var(--danger); border-radius: 8px;">
+                        <h4 style="color: var(--danger); margin-bottom: 0.5rem;">
+                            <i class="fas fa-exclamation-triangle"></i> Alle gespeicherten Daten löschen
+                        </h4>
+                        <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                            Löscht alle verschlüsselten Zugangsdaten und die MAC-Adresse aus dem LocalStorage.
+                        </p>
+                        <button class="btn btn-danger" onclick="clearAllSavedData()">
+                            <i class="fas fa-trash-alt"></i> Alle Daten löschen
+                        </button>
+                    </div>
                 </div>
             </section>
         </main>
@@ -754,6 +814,35 @@
         </div>
     </div>
 
+    <!-- Modal for Server Error Logs -->
+    <div id="serverErrorLogModal" class="modal">
+        <div class="modal-content modal-large">
+            <span class="close" onclick="closeModal('serverErrorLogModal')">&times;</span>
+            <div class="error-log-header">
+                <div>
+                    <h3>
+                        <i class="fas fa-exclamation-triangle"></i> Server-Logs: <span id="error-log-server-name"></span>
+                    </h3>
+                    <p id="error-log-last-error" style="color: var(--danger); margin-top: 0.5rem;"></p>
+                </div>
+                <button class="btn btn-secondary btn-sm" onclick="refreshErrorLog()">
+                    <i class="fas fa-sync"></i> Aktualisieren
+                </button>
+            </div>
+            <div class="error-log-viewer">
+                <pre id="error-log-content">Logs werden geladen...</pre>
+            </div>
+            <div style="display: flex; gap: 0.75rem; margin-top: 1rem;">
+                <button class="btn btn-primary" onclick="closeModal('serverErrorLogModal')">
+                    <i class="fas fa-times"></i> Schließen
+                </button>
+                <button class="btn btn-warning" onclick="retryStartServer()">
+                    <i class="fas fa-redo"></i> Server erneut starten
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal for Adding Webspace -->
     <div id="addWebspaceModal" class="modal">
         <div class="modal-content">
@@ -768,6 +857,82 @@
                 <input type="text" id="webspace-path" placeholder="/var/www/example">
             </div>
             <button class="btn btn-primary" onclick="addWebspace()">Erstellen</button>
+        </div>
+    </div>
+
+    <!-- Modal for File Upload -->
+    <div id="uploadModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('uploadModal')">&times;</span>
+            <h3><i class="fas fa-upload"></i> Datei hochladen</h3>
+            <div class="upload-area">
+                <input type="file" id="upload-file-input" multiple>
+                <p style="color: var(--text-secondary); margin-top: 1rem;">
+                    Wählen Sie eine oder mehrere Dateien zum Hochladen
+                </p>
+            </div>
+            <div style="display: flex; gap: 0.75rem; margin-top: 1rem;">
+                <button class="btn btn-primary" onclick="uploadFiles()">
+                    <i class="fas fa-upload"></i> Hochladen
+                </button>
+                <button class="btn btn-secondary" onclick="closeModal('uploadModal')">Abbrechen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Create Folder -->
+    <div id="createFolderModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('createFolderModal')">&times;</span>
+            <h3><i class="fas fa-folder-plus"></i> Neuer Ordner</h3>
+            <div class="form-group">
+                <label>Ordnername</label>
+                <input type="text" id="new-folder-name" placeholder="Mein Ordner">
+            </div>
+            <div style="display: flex; gap: 0.75rem; margin-top: 1rem;">
+                <button class="btn btn-success" onclick="createFolder()">
+                    <i class="fas fa-check"></i> Erstellen
+                </button>
+                <button class="btn btn-secondary" onclick="closeModal('createFolderModal')">Abbrechen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Rename -->
+    <div id="renameModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('renameModal')">&times;</span>
+            <h3><i class="fas fa-i-cursor"></i> Umbenennen</h3>
+            <div class="form-group">
+                <label>Neuer Name</label>
+                <input type="text" id="rename-input" placeholder="Neuer Name">
+            </div>
+            <div style="display: flex; gap: 0.75rem; margin-top: 1rem;">
+                <button class="btn btn-primary" onclick="renameItem()">
+                    <i class="fas fa-check"></i> Umbenennen
+                </button>
+                <button class="btn btn-secondary" onclick="closeModal('renameModal')">Abbrechen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for File Editor -->
+    <div id="fileEditorModal" class="modal">
+        <div class="modal-content modal-large">
+            <span class="close" onclick="closeModal('fileEditorModal')">&times;</span>
+            <h3>
+                <i class="fas fa-edit"></i>
+                <span id="editor-file-name">Datei bearbeiten</span>
+            </h3>
+            <div class="file-editor">
+                <textarea id="file-editor-content" placeholder="Dateiinhalt wird geladen..."></textarea>
+            </div>
+            <div style="display: flex; gap: 0.75rem; margin-top: 1rem;">
+                <button class="btn btn-success" onclick="saveFileContent()">
+                    <i class="fas fa-save"></i> Speichern
+                </button>
+                <button class="btn btn-secondary" onclick="closeModal('fileEditorModal')">Abbrechen</button>
+            </div>
         </div>
     </div>
 
