@@ -248,11 +248,14 @@ async function loadSystemStats() {
                 el.style.color = 'var(--text)';
             });
             
-            // Update values
+            // Update Classic Design
             document.getElementById('cpu-usage').textContent = `${data.cpu}%`;
             document.getElementById('ram-usage').textContent = `${data.ram}%`;
             document.getElementById('disk-usage').textContent = `${data.disk}%`;
             document.getElementById('temp').textContent = `${data.temp}°C`;
+            
+            // Update Quantum Design
+            updateQuantumStats(data);
         }
     } catch (error) {
         // Don't log every error, handled by apiRequest
@@ -2360,4 +2363,272 @@ document.addEventListener('DOMContentLoaded', () => {
             hideContextMenu();
         }
     });
+    
+    // Load saved theme preference
+    loadThemePreference();
+    
+    // Initialize Quantum effects
+    initializeQuantumEffects();
 });
+
+// ==============================================================
+// QUANTUM VISION THEME SYSTEM
+// ==============================================================
+
+let currentTheme = 'classic';
+
+// Switch between dashboard themes
+function switchDashboardTheme(theme) {
+    currentTheme = theme;
+    
+    const classicDesign = document.getElementById('dashboard-classic');
+    const quantumDesign = document.getElementById('dashboard-quantum');
+    
+    if (theme === 'quantum') {
+        classicDesign.classList.remove('active');
+        quantumDesign.classList.add('active');
+        
+        // Initialize quantum effects
+        setTimeout(() => {
+            initializeQuantumEffects();
+            createQuantumParticles();
+        }, 100);
+    } else {
+        quantumDesign.classList.remove('active');
+        classicDesign.classList.add('active');
+    }
+    
+    // Save preference to localStorage
+    localStorage.setItem('dashboardTheme', theme);
+    
+    // Refresh stats
+    loadSystemStats();
+}
+
+// Load theme preference from localStorage
+function loadThemePreference() {
+    const savedTheme = localStorage.getItem('dashboardTheme') || 'classic';
+    const themeSelect = document.getElementById('theme-select');
+    
+    if (themeSelect) {
+        themeSelect.value = savedTheme;
+        switchDashboardTheme(savedTheme);
+    }
+}
+
+// Update Quantum Design with system stats
+function updateQuantumStats(data) {
+    if (currentTheme !== 'quantum') return;
+    
+    // Update CPU
+    updateQuantumCircle('cpu', data.cpu, data.cpu);
+    document.getElementById('cpu-quantum-value').textContent = `${data.cpu}%`;
+    
+    // Update RAM
+    updateQuantumCircle('ram', data.ram, data.ram);
+    document.getElementById('ram-quantum-value').textContent = `${data.ram}%`;
+    
+    // Update Disk
+    updateQuantumCircle('disk', data.disk, data.disk);
+    document.getElementById('disk-quantum-value').textContent = `${data.disk}%`;
+    
+    // Update Temp
+    const tempPercent = Math.min((data.temp / 100) * 100, 100); // Assume 100°C max
+    updateQuantumCircle('temp', data.temp, tempPercent);
+    document.getElementById('temp-quantum-value').textContent = `${data.temp}°C`;
+}
+
+// Update quantum circle progress
+function updateQuantumCircle(type, value, percent) {
+    const circle = document.getElementById(`${type}-circle`);
+    if (!circle) return;
+    
+    const circumference = 2 * Math.PI * 85; // radius = 85
+    const offset = circumference - (percent / 100) * circumference;
+    
+    circle.style.strokeDashoffset = offset;
+    
+    // Add intensity class based on value
+    const card = document.querySelector(`.quantum-stat-card[data-type="${type}"]`);
+    if (card) {
+        card.classList.remove('low', 'medium', 'high', 'critical');
+        if (percent < 40) {
+            card.classList.add('low');
+        } else if (percent < 70) {
+            card.classList.add('medium');
+        } else if (percent < 90) {
+            card.classList.add('high');
+        } else {
+            card.classList.add('critical');
+        }
+    }
+}
+
+// Initialize Quantum Effects
+function initializeQuantumEffects() {
+    const quantumDesign = document.getElementById('dashboard-quantum');
+    if (!quantumDesign || !quantumDesign.classList.contains('active')) return;
+    
+    // Initialize CPU waveform
+    initCPUWaveform();
+    
+    // Initialize canvas for background effects
+    const canvas = document.getElementById('quantum-canvas');
+    if (canvas) {
+        initQuantumCanvas(canvas);
+    }
+}
+
+// Initialize CPU Waveform Animation
+function initCPUWaveform() {
+    const waveformContainer = document.getElementById('cpu-waveform');
+    if (!waveformContainer) return;
+    
+    // Clear existing content
+    waveformContainer.innerHTML = '';
+    
+    // Create SVG for waveform
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 200 60');
+    svg.setAttribute('preserveAspectRatio', 'none');
+    
+    // Create two wave paths for layered effect
+    const path1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path1.setAttribute('class', 'quantum-wave-path');
+    
+    const path2 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path2.setAttribute('class', 'quantum-wave-path-2');
+    
+    svg.appendChild(path1);
+    svg.appendChild(path2);
+    waveformContainer.appendChild(svg);
+    
+    // Animation variables
+    let phase = 0;
+    
+    function animateWave() {
+        phase += 0.05;
+        
+        // Generate sine wave path
+        let pathData1 = 'M 0 30';
+        let pathData2 = 'M 0 30';
+        
+        for (let x = 0; x <= 200; x += 2) {
+            const y1 = 30 + Math.sin((x / 20) + phase) * 15;
+            const y2 = 30 + Math.sin((x / 25) + phase + 1) * 12;
+            pathData1 += ` L ${x} ${y1}`;
+            pathData2 += ` L ${x} ${y2}`;
+        }
+        
+        path1.setAttribute('d', pathData1);
+        path2.setAttribute('d', pathData2);
+        
+        requestAnimationFrame(animateWave);
+    }
+    
+    animateWave();
+}
+
+// Create Quantum Particles for RAM visualization
+function createQuantumParticles() {
+    const particlesContainer = document.getElementById('ram-particles');
+    if (!particlesContainer) return;
+    
+    // Clear existing particles
+    particlesContainer.innerHTML = '';
+    
+    // Create 20 particles
+    for (let i = 0; i < 20; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'quantum-particle';
+        
+        // Random position and movement
+        const angle = (Math.PI * 2 * i) / 20;
+        const distance = 30 + Math.random() * 30;
+        const tx = Math.cos(angle) * distance;
+        const ty = Math.sin(angle) * distance;
+        
+        particle.style.setProperty('--tx', `${tx}px`);
+        particle.style.setProperty('--ty', `${ty}px`);
+        particle.style.animationDelay = `${i * 0.15}s`;
+        
+        particlesContainer.appendChild(particle);
+    }
+}
+
+// Initialize Canvas Background Effects
+function initQuantumCanvas(canvas) {
+    const ctx = canvas.getContext('2d');
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+    
+    const particles = [];
+    const particleCount = 50;
+    
+    // Create particles
+    for (let i = 0; i < particleCount; i++) {
+        particles.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            vx: (Math.random() - 0.5) * 0.5,
+            vy: (Math.random() - 0.5) * 0.5,
+            radius: Math.random() * 2 + 1,
+            opacity: Math.random() * 0.5 + 0.2
+        });
+    }
+    
+    function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Update and draw particles
+        particles.forEach(particle => {
+            particle.x += particle.vx;
+            particle.y += particle.vy;
+            
+            // Wrap around edges
+            if (particle.x < 0) particle.x = canvas.width;
+            if (particle.x > canvas.width) particle.x = 0;
+            if (particle.y < 0) particle.y = canvas.height;
+            if (particle.y > canvas.height) particle.y = 0;
+            
+            // Draw particle
+            ctx.beginPath();
+            ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(93, 130, 255, ${particle.opacity})`;
+            ctx.fill();
+        });
+        
+        // Draw connections
+        particles.forEach((p1, i) => {
+            particles.slice(i + 1).forEach(p2 => {
+                const dx = p1.x - p2.x;
+                const dy = p1.y - p2.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < 100) {
+                    ctx.beginPath();
+                    ctx.moveTo(p1.x, p1.y);
+                    ctx.lineTo(p2.x, p2.y);
+                    ctx.strokeStyle = `rgba(93, 130, 255, ${0.2 * (1 - distance / 100)})`;
+                    ctx.lineWidth = 0.5;
+                    ctx.stroke();
+                }
+            });
+        });
+        
+        requestAnimationFrame(animate);
+    }
+    
+    animate();
+    
+    // Resize canvas on window resize
+    window.addEventListener('resize', () => {
+        canvas.width = canvas.offsetWidth;
+        canvas.height = canvas.offsetHeight;
+    });
+}
+
+    loadThemePreference();
+    
+    // Initialize Quantum effects
+    initializeQuantumEffects();
