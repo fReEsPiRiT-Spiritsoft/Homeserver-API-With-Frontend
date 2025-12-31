@@ -2537,24 +2537,35 @@ function createQuantumParticles() {
     // Clear existing particles
     particlesContainer.innerHTML = '';
     
-    // Create 20 particles
-    for (let i = 0; i < 20; i++) {
+    // Create 30 particles in multiple rings for better visual effect
+    const particleCount = 30;
+    
+    for (let i = 0; i < particleCount; i++) {
         const particle = document.createElement('div');
         particle.className = 'quantum-particle';
         
-        // Random position and movement
-        const angle = (Math.PI * 2 * i) / 20;
-        const distance = 30 + Math.random() * 30;
-        const tx = Math.cos(angle) * distance;
-        const ty = Math.sin(angle) * distance;
+        // Distribute particles in circular pattern
+        const angle = (Math.PI * 2 * i) / particleCount;
+        const baseDistance = 35 + (i % 3) * 10; // Multiple rings
+        const tx = Math.cos(angle) * baseDistance;
+        const ty = Math.sin(angle) * baseDistance;
+        
+        particle.style.setProperty('--tx', `${tx}px`);
+        particle.style.setProperty('--ty', `${ty}px`);
+        particle.style.animationDelay = `${i * 0.1}s`;
+        particle.style.left = '50%';
+        particle.style.top = '50%';
+        
+        particlesContainer.appendChild(particle);
+    }
+}
         
         particle.style.setProperty('--tx', `${tx}px`);
         particle.style.setProperty('--ty', `${ty}px`);
         particle.style.animationDelay = `${i * 0.15}s`;
         
         particlesContainer.appendChild(particle);
-    }
-}
+
 
 // Initialize Canvas Background Effects
 function initQuantumCanvas(canvas) {
