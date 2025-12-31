@@ -26,7 +26,8 @@ Eine umfassende Benutzeroberfläche zur Verwaltung Ihres Home/Gameservers mit vo
   - **Berechtigungen**: Anzeige von Datei-Berechtigungen und Größen
 
 - **Gameserver Management** ⭐ NEU:
-- <img width="1919" height="948" alt="grafik" src="https://github.com/user-attachments/assets/fb508135-6e10-4fc6-8f90-86e718136411" />
+- <img width="1919" height="941" alt="grafik" src="https://github.com/user-attachments/assets/a09b44aa-3e79-4ec6-9709-9f4312791f12" />
+
 <img width="527" height="582" alt="grafik" src="https://github.com/user-attachments/assets/5da0e9bd-8769-4ca8-a4af-d373501a282e" />
 
 
