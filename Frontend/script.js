@@ -12,6 +12,11 @@ let consecutiveFailures = 0;
 const MAX_TIMEOUT = 10000; // 10 seconds timeout for requests
 const OFFLINE_THRESHOLD = 15000; // 15 seconds without response = offline
 
+// Animation Tracking
+let cpuWaveformAnimationId = null;
+let quantumCanvasAnimationId = null;
+let animationsStopped = false;
+
 // LocalStorage Keys
 const STORAGE_KEYS = {
     SSH_CREDENTIALS: 'homeserver_ssh_credentials',
@@ -218,21 +223,76 @@ function updateSystemStatus(online) {
         statusDot.classList.add('online');
         if (statusText) statusText.textContent = 'Online';
         if (statusBadge) statusBadge.title = 'Backend verbunden';
+        
+        // Restart animations when going online
+        if (animationsStopped) {
+            animationsStopped = false;
+            initializeQuantumEffects();
+        }
     } else {
         statusDot.classList.add('offline');
         statusDot.classList.remove('online');
         if (statusText) statusText.textContent = 'Offline';
         if (statusBadge) statusBadge.title = 'Backend nicht erreichbar';
         
-        // Grey out stats when offline
-        document.querySelectorAll('.stat-value').forEach(el => {
-            if (!el.dataset.lastValue) {
-                el.dataset.lastValue = el.textContent;
-            }
-            el.style.opacity = '0.5';
-            el.style.color = 'var(--text-secondary)';
+        // Reset all dashboard values to 0% and stop animations
+        resetDashboardToZero();
+    }
+}
+
+// Reset dashboard to zero when offline
+function resetDashboardToZero() {
+    animationsStopped = true;
+    
+    // Stop all animations
+    if (cpuWaveformAnimationId) {
+        cancelAnimationFrame(cpuWaveformAnimationId);
+        cpuWaveformAnimationId = null;
+    }
+    if (quantumCanvasAnimationId) {
+        cancelAnimationFrame(quantumCanvasAnimationId);
+        quantumCanvasAnimationId = null;
+    }
+    
+    // Reset Classic Design values
+    document.getElementById('cpu-usage').textContent = '0%';
+    document.getElementById('ram-usage').textContent = '0%';
+    document.getElementById('disk-usage').textContent = '0%';
+    document.getElementById('temp').textContent = '0°C';
+    
+    // Grey out stats when offline
+    document.querySelectorAll('.stat-value').forEach(el => {
+        el.style.opacity = '0.5';
+        el.style.color = 'var(--text-secondary)';
+    });
+    
+    // Reset Quantum Design values
+    document.getElementById('cpu-quantum-value').textContent = '0%';
+    document.getElementById('ram-quantum-value').textContent = '0%';
+    document.getElementById('disk-quantum-value').textContent = '0%';
+    document.getElementById('temp-quantum-value').textContent = '0°C';
+    
+    // Reset quantum circles to 0%
+    updateQuantumCircle('cpu', 0, 0);
+    updateQuantumCircle('ram', 0, 0);
+    updateQuantumCircle('disk', 0, 0);
+    updateQuantumCircle('temp', 0, 0);
+    
+    // Freeze waveform animation
+    const cpuWaveform = document.getElementById('cpu-waveform');
+    if (cpuWaveform) {
+        const paths = cpuWaveform.querySelectorAll('path');
+        paths.forEach(path => {
+            path.style.opacity = '0.3';
         });
     }
+    
+    // Stop particle animations (CSS-based)
+    const particles = document.querySelectorAll('.quantum-particle');
+    particles.forEach(particle => {
+        particle.style.animationPlayState = 'paused';
+        particle.style.opacity = '0.3';
+    });
 }
 
 // System Stats
@@ -247,6 +307,28 @@ async function loadSystemStats() {
                 el.style.opacity = '1';
                 el.style.color = 'var(--text)';
             });
+            
+            // Restore animations and particles when coming back online
+            if (animationsStopped) {
+                animationsStopped = false;
+                initializeQuantumEffects();
+                
+                // Resume particle animations
+                const particles = document.querySelectorAll('.quantum-particle');
+                particles.forEach(particle => {
+                    particle.style.animationPlayState = 'running';
+                    particle.style.opacity = '1';
+                });
+                
+                // Restore waveform opacity
+                const cpuWaveform = document.getElementById('cpu-waveform');
+                if (cpuWaveform) {
+                    const paths = cpuWaveform.querySelectorAll('path');
+                    paths.forEach(path => {
+                        path.style.opacity = '1';
+                    });
+                }
+            }
             
             // Update Classic Design
             document.getElementById('cpu-usage').textContent = `${data.cpu}%`;
@@ -2975,6 +3057,8 @@ function initCPUWaveform() {
     let phase = 0;
     
     function animateWave() {
+        if (animationsStopped) return;
+        
         phase += 0.05;
         
         // Generate sine wave path
@@ -2991,7 +3075,7 @@ function initCPUWaveform() {
         path1.setAttribute('d', pathData1);
         path2.setAttribute('d', pathData2);
         
-        requestAnimationFrame(animateWave);
+        cpuWaveformAnimationId = requestAnimationFrame(animateWave);
     }
     
     animateWave();
@@ -3057,6 +3141,8 @@ function initQuantumCanvas(canvas) {
     }
     
     function animate() {
+        if (animationsStopped) return;
+        
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
         // Update and draw particles
@@ -3095,7 +3181,7 @@ function initQuantumCanvas(canvas) {
             });
         });
         
-        requestAnimationFrame(animate);
+        quantumCanvasAnimationId = requestAnimationFrame(animate);
     }
     
     animate();
