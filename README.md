@@ -5,7 +5,8 @@ Eine umfassende Benutzeroberfläche zur Verwaltung Ihres Home/Gameservers mit vo
 ## Features
 
 - **Dashboard**: Übersicht über Systemressourcen (CPU, RAM, Disk, Temperatur)
-- <img width="1905" height="935" alt="grafik" src="https://github.com/user-attachments/assets/afc079c3-0168-41c0-9caa-5117c2baa218" />
+-<img width="1918" height="937" alt="grafik" src="https://github.com/user-attachments/assets/e6cb223e-a814-4bd2-8d19-b1fe6f8feb56" />
+
 
 - **DNS Server Verwaltung**: DNS-Einträge hinzufügen, bearbeiten und löschen
 - <img width="1919" height="562" alt="grafik" src="https://github.com/user-attachments/assets/c4c3923f-2076-4bca-89c6-960e6ab4d4e3" />
