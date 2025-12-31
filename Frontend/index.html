@@ -398,8 +398,18 @@
                     </button>
                 </div>
 
-                <div class="gameserver-grid" id="gameserver-list">
-                    <!-- Gameserver cards will be loaded dynamically -->
+                <!-- Classic Gameserver Design -->
+                <div id="gameserver-classic" class="gameserver-design active">
+                    <div class="gameserver-grid" id="gameserver-list">
+                        <!-- Gameserver cards will be loaded dynamically -->
+                    </div>
+                </div>
+
+                <!-- Quantum Gameserver Design -->
+                <div id="gameserver-quantum" class="gameserver-design">
+                    <div class="quantum-gameserver-grid" id="gameserver-list-quantum">
+                        <!-- Gameserver cards will be loaded dynamically -->
+                    </div>
                 </div>
             </section>
 
@@ -539,70 +549,147 @@
 
             <!-- File Manager Section (WIP) -->
             <section id="filemanager" class="content-section">
-                <div class="filemanager-container">
-                    <!-- File Manager Toolbar -->
-                    <div class="filemanager-toolbar">
-                        <div class="toolbar-left">
-                            <button class="btn btn-primary" onclick="showUploadModal()">
-                                <i class="fas fa-upload"></i>
-                                Hochladen
-                            </button>
-                            <button class="btn btn-success" onclick="showCreateFolderModal()">
-                                <i class="fas fa-folder-plus"></i>
-                                Neuer Ordner
-                            </button>
-                            <button class="btn btn-info" onclick="refreshFileManager()">
-                                <i class="fas fa-sync-alt"></i>
-                                Aktualisieren
-                            </button>
+                <!-- Classic File Manager Design -->
+                <div id="filemanager-classic" class="filemanager-design active">
+                    <div class="filemanager-container">
+                        <!-- File Manager Toolbar -->
+                        <div class="filemanager-toolbar">
+                            <div class="toolbar-left">
+                                <button class="btn btn-primary" onclick="showUploadModal()">
+                                    <i class="fas fa-upload"></i>
+                                    Hochladen
+                                </button>
+                                <button class="btn btn-success" onclick="showCreateFolderModal()">
+                                    <i class="fas fa-folder-plus"></i>
+                                    Neuer Ordner
+                                </button>
+                                <button class="btn btn-info" onclick="refreshFileManager()">
+                                    <i class="fas fa-sync-alt"></i>
+                                    Aktualisieren
+                                </button>
+                            </div>
+                            <div class="toolbar-right">
+                                <div class="view-mode">
+                                    <button class="view-btn active" data-view="grid" onclick="switchView('grid')">
+                                        <i class="fas fa-th"></i>
+                                    </button>
+                                    <button class="view-btn" data-view="list" onclick="switchView('list')">
+                                        <i class="fas fa-list"></i>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                        <div class="toolbar-right">
-                            <div class="view-mode">
-                                <button class="view-btn active" data-view="grid" onclick="switchView('grid')">
-                                    <i class="fas fa-th"></i>
-                                </button>
-                                <button class="view-btn" data-view="list" onclick="switchView('list')">
-                                    <i class="fas fa-list"></i>
-                                </button>
+
+                        <!-- Breadcrumb Navigation -->
+                        <div class="filemanager-breadcrumb">
+                            <i class="fas fa-folder-open"></i>
+                            <div id="breadcrumb-path"></div>
+                        </div>
+
+                        <!-- File Drop Zone -->
+                        <div id="file-drop-zone" class="file-drop-zone">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <p>Dateien hierher ziehen oder klicken zum Hochladen</p>
+                            <input type="file" id="file-input" multiple style="display: none;">
+                        </div>
+
+                        <!-- File Grid/List -->
+                        <div id="file-grid" class="file-grid">
+                            <!-- Files will be loaded here -->
+                        </div>
+
+                        <!-- Context Menu -->
+                        <div id="file-context-menu" class="context-menu" style="display: none;">
+                            <div class="context-item" onclick="contextAction('open')">
+                                <i class="fas fa-folder-open"></i> Öffnen
+                            </div>
+                            <div class="context-item" onclick="contextAction('edit')">
+                                <i class="fas fa-edit"></i> Bearbeiten
+                            </div>
+                            <div class="context-item" onclick="contextAction('download')">
+                                <i class="fas fa-download"></i> Herunterladen
+                            </div>
+                            <div class="context-item" onclick="contextAction('rename')">
+                                <i class="fas fa-i-cursor"></i> Umbenennen
+                            </div>
+                            <div class="context-divider"></div>
+                            <div class="context-item danger" onclick="contextAction('delete')">
+                                <i class="fas fa-trash"></i> Löschen
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    <!-- Breadcrumb Navigation -->
-                    <div class="filemanager-breadcrumb">
-                        <i class="fas fa-folder-open"></i>
-                        <div id="breadcrumb-path"></div>
-                    </div>
+                <!-- Quantum File Manager Design -->
+                <div id="filemanager-quantum" class="filemanager-design">
+                    <div class="quantum-filemanager-container">
+                        <!-- Quantum Toolbar -->
+                        <div class="quantum-filemanager-toolbar">
+                            <div class="quantum-toolbar-left">
+                                <button class="quantum-btn quantum-btn-primary" onclick="showUploadModal()">
+                                    <i class="fas fa-upload"></i>
+                                    <span>Upload</span>
+                                </button>
+                                <button class="quantum-btn quantum-btn-success" onclick="showCreateFolderModal()">
+                                    <i class="fas fa-folder-plus"></i>
+                                    <span>New Folder</span>
+                                </button>
+                                <button class="quantum-btn quantum-btn-info" onclick="refreshFileManager()">
+                                    <i class="fas fa-sync-alt"></i>
+                                    <span>Refresh</span>
+                                </button>
+                            </div>
+                            <div class="quantum-toolbar-right">
+                                <div class="quantum-view-mode">
+                                    <button class="quantum-view-btn active" data-view="grid" onclick="switchView('grid')">
+                                        <i class="fas fa-th"></i>
+                                    </button>
+                                    <button class="quantum-view-btn" data-view="list" onclick="switchView('list')">
+                                        <i class="fas fa-list"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
 
-                    <!-- File Drop Zone -->
-                    <div id="file-drop-zone" class="file-drop-zone">
-                        <i class="fas fa-cloud-upload-alt"></i>
-                        <p>Dateien hierher ziehen oder klicken zum Hochladen</p>
-                        <input type="file" id="file-input" multiple style="display: none;">
-                    </div>
+                        <!-- Quantum Breadcrumb -->
+                        <div class="quantum-filemanager-breadcrumb">
+                            <i class="fas fa-folder-open"></i>
+                            <div id="breadcrumb-path-quantum"></div>
+                        </div>
 
-                    <!-- File Grid/List -->
-                    <div id="file-grid" class="file-grid">
-                        <!-- Files will be loaded here -->
-                    </div>
+                        <!-- Quantum File Drop Zone -->
+                        <div id="file-drop-zone-quantum" class="quantum-file-drop-zone">
+                            <div class="quantum-drop-icon">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                            </div>
+                            <p class="quantum-drop-text">Drop files here or click to upload</p>
+                            <div class="quantum-drop-glow"></div>
+                            <input type="file" id="file-input-quantum" multiple style="display: none;">
+                        </div>
 
-                    <!-- Context Menu -->
-                    <div id="file-context-menu" class="context-menu" style="display: none;">
-                        <div class="context-item" onclick="contextAction('open')">
-                            <i class="fas fa-folder-open"></i> Öffnen
+                        <!-- Quantum File Grid -->
+                        <div id="file-grid-quantum" class="quantum-file-grid">
+                            <!-- Files will be loaded here -->
                         </div>
-                        <div class="context-item" onclick="contextAction('edit')">
-                            <i class="fas fa-edit"></i> Bearbeiten
-                        </div>
-                        <div class="context-item" onclick="contextAction('download')">
-                            <i class="fas fa-download"></i> Herunterladen
-                        </div>
-                        <div class="context-item" onclick="contextAction('rename')">
-                            <i class="fas fa-i-cursor"></i> Umbenennen
-                        </div>
-                        <div class="context-divider"></div>
-                        <div class="context-item danger" onclick="contextAction('delete')">
-                            <i class="fas fa-trash"></i> Löschen
+
+                        <!-- Quantum Context Menu -->
+                        <div id="file-context-menu-quantum" class="quantum-context-menu" style="display: none;">
+                            <div class="quantum-context-item" onclick="contextAction('open')">
+                                <i class="fas fa-folder-open"></i> Open
+                            </div>
+                            <div class="quantum-context-item" onclick="contextAction('edit')">
+                                <i class="fas fa-edit"></i> Edit
+                            </div>
+                            <div class="quantum-context-item" onclick="contextAction('download')">
+                                <i class="fas fa-download"></i> Download
+                            </div>
+                            <div class="quantum-context-item" onclick="contextAction('rename')">
+                                <i class="fas fa-i-cursor"></i> Rename
+                            </div>
+                            <div class="quantum-context-divider"></div>
+                            <div class="quantum-context-item danger" onclick="contextAction('delete')">
+                                <i class="fas fa-trash"></i> Delete
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1048,8 +1135,11 @@
                 <i class="fas fa-edit"></i>
                 <span id="editor-file-name">Datei bearbeiten</span>
             </h3>
-            <div class="file-editor">
-                <textarea id="file-editor-content" placeholder="Dateiinhalt wird geladen..."></textarea>
+            <div class="code-editor-wrapper">
+                <div class="code-editor-container">
+                    <pre id="code-highlight-overlay" class="code-highlight-layer"><code id="code-highlight-content"></code></pre>
+                    <textarea id="file-editor-content" class="code-input-layer" placeholder="Dateiinhalt wird geladen..." spellcheck="false"></textarea>
+                </div>
             </div>
             <div style="display: flex; gap: 0.75rem; margin-top: 1rem;">
                 <button class="btn btn-success" onclick="saveFileContent()">

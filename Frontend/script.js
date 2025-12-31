@@ -726,17 +726,29 @@ async function loadGameservers() {
         const data = await response.json();
         
         if (data.success && data.servers) {
-            const container = document.getElementById('gameserver-list');
-            container.innerHTML = '';
+            // Load into Classic Design
+            const containerClassic = document.getElementById('gameserver-list');
+            containerClassic.innerHTML = '';
+            
+            // Load into Quantum Design
+            const containerQuantum = document.getElementById('gameserver-list-quantum');
+            containerQuantum.innerHTML = '';
             
             if (data.servers.length === 0) {
-                container.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 2rem;">Keine Gameserver vorhanden. Erstelle einen neuen Server!</p>';
+                const emptyMessage = '<p style="color: var(--text-secondary); text-align: center; padding: 2rem;">Keine Gameserver vorhanden. Erstelle einen neuen Server!</p>';
+                containerClassic.innerHTML = emptyMessage;
+                containerQuantum.innerHTML = emptyMessage;
                 return;
             }
             
             data.servers.forEach(server => {
-                const card = createGameserverCard(server);
-                container.appendChild(card);
+                // Create classic card
+                const cardClassic = createGameserverCard(server, 'classic');
+                containerClassic.appendChild(cardClassic);
+                
+                // Create quantum card
+                const cardQuantum = createGameserverCard(server, 'quantum');
+                containerQuantum.appendChild(cardQuantum);
             });
         }
     } catch (error) {
@@ -744,9 +756,8 @@ async function loadGameservers() {
     }
 }
 
-function createGameserverCard(server) {
+function createGameserverCard(server, theme = 'classic') {
     const card = document.createElement('div');
-    card.className = 'gameserver-card';
     
     const statusClass = server.status === 'running' ? 'running' : 
                        server.status === 'installing' ? 'installing' : 
@@ -775,46 +786,121 @@ function createGameserverCard(server) {
     const icon = typeIcons[server.type] || 'fa-server';
     const typeLabel = typeLabels[server.type] || server.type;
 
-    card.innerHTML = `
-        <div class="gameserver-header">
-            <h4><i class="fas ${icon}"></i> ${server.name}</h4>
-            <span class="status-badge ${statusClass}">${statusText}</span>
-        </div>
-        <div class="gameserver-info">
-            <p><strong>Typ:</strong> ${typeLabel}</p>
-            <p><strong>Port:</strong> ${server.port}</p>
-            <p><strong>RAM:</strong> ${server.ram}GB</p>
-            <p><strong>Erstellt:</strong> ${new Date(server.created).toLocaleDateString('de-DE')}</p>
-        </div>
-        <div class="gameserver-controls">
-            <button class="btn btn-sm btn-success" onclick="controlGameserver('${server.name}', 'start')" 
-                    ${server.status === 'running' || server.status === 'installing' ? 'disabled' : ''}>
-                <i class="fas fa-play"></i> Start
-            </button>
-            <button class="btn btn-sm btn-warning" onclick="controlGameserver('${server.name}', 'restart')"
-                    ${server.status !== 'running' ? 'disabled' : ''}>
-                <i class="fas fa-redo"></i> Restart
-            </button>
-            <button class="btn btn-sm btn-danger" onclick="controlGameserver('${server.name}', 'stop')"
-                    ${server.status !== 'running' ? 'disabled' : ''}>
-                <i class="fas fa-stop"></i> Stop
-            </button>
-            <button class="btn btn-sm btn-info" onclick="openConfigEditor('${server.name}')">
-                <i class="fas fa-cog"></i> Config
-            </button>
-            <button class="btn btn-sm btn-primary" onclick="openServerConsole('${server.name}')">
-                <i class="fas fa-terminal"></i> Console
-            </button>
-            <button class="btn btn-sm btn-secondary" onclick="openErrorLogModalFromAPI('${server.name}')" 
-                    title="Server-Logs ansehen">
-                <i class="fas fa-file-alt"></i> Logs
-            </button>
-            <button class="btn btn-sm btn-danger" onclick="deleteGameserver('${server.name}')"
-                    ${server.status === 'running' ? 'disabled' : ''}>
-                <i class="fas fa-trash"></i> Löschen
-            </button>
-        </div>
-    `;
+    if (theme === 'quantum') {
+        // QUANTUM DESIGN
+        card.className = 'quantum-gameserver-card';
+        card.setAttribute('data-type', server.type);
+        
+        card.innerHTML = `
+            <div class="quantum-gameserver-header">
+                <div class="quantum-gameserver-title">
+                    <div class="quantum-gameserver-icon">
+                        <i class="fas ${icon}"></i>
+                    </div>
+                    <div>
+                        <div class="quantum-gameserver-name">${server.name}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">${typeLabel}</div>
+                    </div>
+                </div>
+                <span class="quantum-status-badge ${statusClass}">${statusText}</span>
+            </div>
+            
+            <div class="quantum-gameserver-info">
+                <div class="quantum-info-row">
+                    <span class="quantum-info-label"><i class="fas fa-network-wired"></i> Port</span>
+                    <span class="quantum-info-value">${server.port}</span>
+                </div>
+                <div class="quantum-info-row">
+                    <span class="quantum-info-label"><i class="fas fa-memory"></i> RAM</span>
+                    <span class="quantum-info-value">${server.ram}GB</span>
+                </div>
+                <div class="quantum-info-row">
+                    <span class="quantum-info-label"><i class="fas fa-calendar"></i> Erstellt</span>
+                    <span class="quantum-info-value">${new Date(server.created).toLocaleDateString('de-DE')}</span>
+                </div>
+            </div>
+            
+            <div class="quantum-gameserver-controls">
+                <button class="quantum-btn quantum-btn-success" onclick="controlGameserver('${server.name}', 'start')" 
+                        ${server.status === 'running' || server.status === 'installing' ? 'disabled' : ''}>
+                    <i class="fas fa-play"></i>
+                    <span>Start</span>
+                </button>
+                <button class="quantum-btn quantum-btn-warning" onclick="controlGameserver('${server.name}', 'restart')"
+                        ${server.status !== 'running' ? 'disabled' : ''}>
+                    <i class="fas fa-redo"></i>
+                    <span>Restart</span>
+                </button>
+                <button class="quantum-btn quantum-btn-danger" onclick="controlGameserver('${server.name}', 'stop')"
+                        ${server.status !== 'running' ? 'disabled' : ''}>
+                    <i class="fas fa-stop"></i>
+                    <span>Stop</span>
+                </button>
+                <button class="quantum-btn quantum-btn-info" onclick="openConfigEditor('${server.name}')">
+                    <i class="fas fa-cog"></i>
+                    <span>Config</span>
+                </button>
+                <button class="quantum-btn quantum-btn-primary" onclick="openServerConsole('${server.name}')">
+                    <i class="fas fa-terminal"></i>
+                    <span>Console</span>
+                </button>
+                <button class="quantum-btn quantum-btn-secondary" onclick="openErrorLogModalFromAPI('${server.name}')" 
+                        title="Server-Logs ansehen">
+                    <i class="fas fa-file-alt"></i>
+                    <span>Logs</span>
+                </button>
+                <button class="quantum-btn quantum-btn-danger quantum-btn-full" onclick="deleteGameserver('${server.name}')"
+                        ${server.status === 'running' ? 'disabled' : ''}>
+                    <i class="fas fa-trash"></i>
+                    <span>Löschen</span>
+                </button>
+            </div>
+        `;
+    } else {
+        // CLASSIC DESIGN
+        card.className = 'gameserver-card';
+        
+        card.innerHTML = `
+            <div class="gameserver-header">
+                <h4><i class="fas ${icon}"></i> ${server.name}</h4>
+                <span class="status-badge ${statusClass}">${statusText}</span>
+            </div>
+            <div class="gameserver-info">
+                <p><strong>Typ:</strong> ${typeLabel}</p>
+                <p><strong>Port:</strong> ${server.port}</p>
+                <p><strong>RAM:</strong> ${server.ram}GB</p>
+                <p><strong>Erstellt:</strong> ${new Date(server.created).toLocaleDateString('de-DE')}</p>
+            </div>
+            <div class="gameserver-controls">
+                <button class="btn btn-sm btn-success" onclick="controlGameserver('${server.name}', 'start')" 
+                        ${server.status === 'running' || server.status === 'installing' ? 'disabled' : ''}>
+                    <i class="fas fa-play"></i> Start
+                </button>
+                <button class="btn btn-sm btn-warning" onclick="controlGameserver('${server.name}', 'restart')"
+                        ${server.status !== 'running' ? 'disabled' : ''}>
+                    <i class="fas fa-redo"></i> Restart
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="controlGameserver('${server.name}', 'stop')"
+                        ${server.status !== 'running' ? 'disabled' : ''}>
+                    <i class="fas fa-stop"></i> Stop
+                </button>
+                <button class="btn btn-sm btn-info" onclick="openConfigEditor('${server.name}')">
+                    <i class="fas fa-cog"></i> Config
+                </button>
+                <button class="btn btn-sm btn-primary" onclick="openServerConsole('${server.name}')">
+                    <i class="fas fa-terminal"></i> Console
+                </button>
+                <button class="btn btn-sm btn-secondary" onclick="openErrorLogModalFromAPI('${server.name}')" 
+                        title="Server-Logs ansehen">
+                    <i class="fas fa-file-alt"></i> Logs
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="deleteGameserver('${server.name}')"
+                        ${server.status === 'running' ? 'disabled' : ''}>
+                    <i class="fas fa-trash"></i> Löschen
+                </button>
+            </div>
+        `;
+    }
 
     return card;
 }
@@ -1865,6 +1951,7 @@ async function loadFileManager(path = currentPath) {
 // Render breadcrumb navigation
 function renderBreadcrumb() {
     const breadcrumbPath = document.getElementById('breadcrumb-path');
+    const breadcrumbPathQuantum = document.getElementById('breadcrumb-path-quantum');
     const parts = currentPath.split('/').filter(p => p);
     
     // Quick Access Buttons
@@ -1897,39 +1984,68 @@ function renderBreadcrumb() {
     });
     html += '</div>';
     
-    breadcrumbPath.innerHTML = html;
+    if (breadcrumbPath) breadcrumbPath.innerHTML = html;
+    if (breadcrumbPathQuantum) breadcrumbPathQuantum.innerHTML = html;
 }
 
 // Render file grid
 function renderFileGrid() {
-    const fileGrid = document.getElementById('file-grid');
+    const fileGridClassic = document.getElementById('file-grid');
+    const fileGridQuantum = document.getElementById('file-grid-quantum');
     
     if (fileManagerItems.length === 0) {
-        fileGrid.innerHTML = `<div class="file-grid-empty">
+        const emptyHTML = `<div class="file-grid-empty">
             <i class="fas fa-folder-open"></i>
             <p>Dieser Ordner ist leer</p>
         </div>`;
+        if (fileGridClassic) fileGridClassic.innerHTML = emptyHTML;
+        if (fileGridQuantum) fileGridQuantum.innerHTML = emptyHTML;
         return;
     }
     
-    fileGrid.innerHTML = fileManagerItems.map(item => {
-        const icon = getFileIcon(item);
-        const size = formatFileSize(item.size);
-        const date = new Date(item.modified).toLocaleDateString('de-DE');
-        
-        return `
-            <div class="file-item" 
-                 data-path="${item.path}" 
-                 data-is-directory="${item.is_directory}"
-                 onclick="handleFileClick(event, '${item.path}', ${item.is_directory})"
-                 oncontextmenu="showContextMenu(event, '${item.path}', ${item.is_directory}); return false;">
-                <i class="fas ${icon.class} file-icon ${icon.type}"></i>
-                ${!item.is_directory ? `<span class="file-size">${size}</span>` : ''}
-                <div class="file-name">${item.name}</div>
-                <div class="file-info">${date}</div>
-            </div>
-        `;
-    }).join('');
+    // Render Classic Design
+    if (fileGridClassic) {
+        fileGridClassic.innerHTML = fileManagerItems.map(item => {
+            const icon = getFileIcon(item);
+            const size = formatFileSize(item.size);
+            const date = new Date(item.modified).toLocaleDateString('de-DE');
+            
+            return `
+                <div class="file-item" 
+                     data-path="${item.path}" 
+                     data-is-directory="${item.is_directory}"
+                     onclick="handleFileClick(event, '${item.path}', ${item.is_directory})"
+                     oncontextmenu="showContextMenu(event, '${item.path}', ${item.is_directory}); return false;">
+                    <i class="fas ${icon.class} file-icon ${icon.type}"></i>
+                    ${!item.is_directory ? `<span class="file-size">${size}</span>` : ''}
+                    <div class="file-name">${item.name}</div>
+                    <div class="file-info">${date}</div>
+                </div>
+            `;
+        }).join('');
+    }
+    
+    // Render Quantum Design
+    if (fileGridQuantum) {
+        fileGridQuantum.innerHTML = fileManagerItems.map(item => {
+            const icon = getFileIcon(item);
+            const size = formatFileSize(item.size);
+            
+            return `
+                <div class="quantum-file-item" 
+                     data-path="${item.path}" 
+                     data-is-directory="${item.is_directory}"
+                     onclick="handleFileClick(event, '${item.path}', ${item.is_directory})"
+                     oncontextmenu="showContextMenuQuantum(event, '${item.path}', ${item.is_directory}); return false;">
+                    <div class="quantum-file-icon ${icon.type}-icon">
+                        <i class="fas ${icon.class}"></i>
+                    </div>
+                    <div class="quantum-file-name">${item.name}</div>
+                    ${!item.is_directory ? `<div class="quantum-file-size">${size}</div>` : ''}
+                </div>
+            `;
+        }).join('');
+    }
 }
 
 // Get appropriate icon for file type
@@ -1987,7 +2103,11 @@ function handleFileClick(event, path, isDirectory) {
             openFileEditor(path);
         }
     } else {
+        // Remove selection from both designs
         document.querySelectorAll('.file-item').forEach(item => {
+            item.classList.remove('selected');
+        });
+        document.querySelectorAll('.quantum-file-item').forEach(item => {
             item.classList.remove('selected');
         });
         event.currentTarget.classList.add('selected');
@@ -2006,8 +2126,22 @@ function showContextMenu(event, path, isDirectory) {
     contextMenu.style.top = event.pageY + 'px';
 }
 
+// Quantum Context menu
+function showContextMenuQuantum(event, path, isDirectory) {
+    event.preventDefault();
+    selectedItem = { path, isDirectory };
+    
+    const contextMenu = document.getElementById('file-context-menu-quantum');
+    contextMenu.style.display = 'block';
+    contextMenu.style.left = event.pageX + 'px';
+    contextMenu.style.top = event.pageY + 'px';
+}
+
 function hideContextMenu() {
-    document.getElementById('file-context-menu').style.display = 'none';
+    const classicMenu = document.getElementById('file-context-menu');
+    const quantumMenu = document.getElementById('file-context-menu-quantum');
+    if (classicMenu) classicMenu.style.display = 'none';
+    if (quantumMenu) quantumMenu.style.display = 'none';
 }
 
 async function contextAction(action) {
@@ -2280,9 +2414,14 @@ async function openFileEditor(path) {
         
         if (response.success) {
             document.getElementById('editor-file-name').textContent = path.split('/').pop();
-            document.getElementById('file-editor-content').value = response.content;
+            const editorTextarea = document.getElementById('file-editor-content');
+            editorTextarea.value = response.content;
+            editorTextarea.dataset.path = path;
+            
+            // Apply syntax highlighting
+            applySyntaxHighlighting(path, response.content);
+            
             document.getElementById('fileEditorModal').classList.add('active');
-            document.getElementById('file-editor-content').dataset.path = path;
         } else {
             showNotification('danger', response.error || 'Fehler beim Öffnen');
         }
@@ -2372,6 +2511,287 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ==============================================================
+// SYNTAX HIGHLIGHTING SYSTEM
+// ==============================================================
+
+function applySyntaxHighlighting(filePath, content) {
+    const textarea = document.getElementById('file-editor-content');
+    const highlightOverlay = document.getElementById('code-highlight-content');
+    
+    if (!textarea || !highlightOverlay) return;
+    
+    const fileName = filePath.split('/').pop();
+    const extension = fileName.split('.').pop().toLowerCase();
+    
+    // Generate highlighted HTML
+    const highlightedHTML = highlightCode(content, extension);
+    highlightOverlay.innerHTML = highlightedHTML;
+    
+    // Sync scroll between textarea and highlight overlay
+    const container = document.querySelector('.code-editor-container');
+    if (container) {
+        textarea.addEventListener('scroll', () => {
+            highlightOverlay.scrollTop = textarea.scrollTop;
+            highlightOverlay.scrollLeft = textarea.scrollLeft;
+        });
+        
+        // Update highlighting on input
+        textarea.addEventListener('input', () => {
+            const newContent = textarea.value;
+            const newHighlightedHTML = highlightCode(newContent, extension);
+            highlightOverlay.innerHTML = newHighlightedHTML;
+        });
+    }
+}
+
+function highlightCode(code, fileType) {
+    // Detect file type and apply appropriate highlighting
+    switch(fileType) {
+        case 'properties':
+        case 'conf':
+        case 'config':
+        case 'ini':
+            return highlightConfig(code);
+        case 'json':
+            return highlightJSON(code);
+        case 'js':
+        case 'javascript':
+            return highlightJavaScript(code);
+        case 'py':
+        case 'python':
+            return highlightPython(code);
+        case 'yaml':
+        case 'yml':
+            return highlightYAML(code);
+        case 'toml':
+            return highlightTOML(code);
+        case 'xml':
+        case 'html':
+            return highlightXML(code);
+        case 'sh':
+        case 'bash':
+            return highlightShell(code);
+        default:
+            return escapeHtml(code);
+    }
+}
+
+// Config File Highlighting (Properties, .conf, .ini)
+function highlightConfig(code) {
+    let highlighted = escapeHtml(code);
+    
+    // Comments (# or ;)
+    highlighted = highlighted.replace(/(^|\n)([#;].*)/g, '$1<span class="config-comment">$2</span>');
+    
+    // Sections [section]
+    highlighted = highlighted.replace(/^\[([^\]]+)\]$/gm, '<span class="config-section">[$1]</span>');
+    
+    // Key-Value pairs (key=value or key: value)
+    highlighted = highlighted.replace(/^([^#;\[\n=:]+?)([=:])(.+)$/gm, 
+        '<span class="config-key">$1</span><span class="config-equals">$2</span><span class="config-value">$3</span>');
+    
+    return highlighted;
+}
+
+// TOML Highlighting
+function highlightTOML(code) {
+    let highlighted = escapeHtml(code);
+    
+    // Comments
+    highlighted = highlighted.replace(/(#.*)$/gm, '<span class="config-comment">$1</span>');
+    
+    // Sections [[section]] or [section]
+    highlighted = highlighted.replace(/^(\[{1,2})([^\]]+)(\]{1,2})$/gm, 
+        '<span class="toml-section">$1$2$3</span>');
+    
+    // Strings (quoted values)
+    highlighted = highlighted.replace(/=\s*(&quot;[^&]*?&quot;|&#039;[^&#]*?&#039;)/g, 
+        '= <span class="toml-string">$1</span>');
+    
+    // Booleans
+    highlighted = highlighted.replace(/=\s*(true|false)/gi, '= <span class="toml-boolean">$1</span>');
+    
+    // Numbers
+    highlighted = highlighted.replace(/=\s*(\d+\.?\d*)/g, '= <span class="toml-number">$1</span>');
+    
+    // Key = Value (general fallback)
+    highlighted = highlighted.replace(/^([^#\[=]+)(=)(.+)$/gm, function(match, key, equals, value) {
+        // Skip if already has highlighting
+        if (value.includes('<span')) {
+            return `<span class="toml-key">${key}</span><span class="config-equals">${equals}</span>${value}`;
+        }
+        return `<span class="toml-key">${key}</span><span class="config-equals">${equals}</span><span class="toml-value">${value}</span>`;
+    });
+    
+    return highlighted;
+}
+
+// Properties File Highlighting (server.properties)
+function highlightProperties(code) {
+    let highlighted = code;
+    
+    // Comments
+    highlighted = highlighted.replace(/^(#.*)$/gm, '<span class="config-comment">$1</span>');
+    
+    // Key=Value
+    highlighted = highlighted.replace(/^([^#=]+)(=)(.*)$/gm, 
+        '<span class="properties-key">$1</span><span class="config-equals">$2</span><span class="properties-value">$3</span>');
+    
+    return highlighted;
+}
+
+// JSON Highlighting
+function highlightJSON(code) {
+    let highlighted = code;
+    
+    // Strings (keys and values)
+    highlighted = highlighted.replace(/"([^"]+)":/g, '<span class="json-key">"$1"</span>:');
+    highlighted = highlighted.replace(/:\s*"([^"]+)"/g, ': <span class="json-string">"$1"</span>');
+    
+    // Numbers
+    highlighted = highlighted.replace(/:\s*(\d+)/g, ': <span class="json-number">$1</span>');
+    
+    // Booleans
+    highlighted = highlighted.replace(/:\s*(true|false)/g, ': <span class="json-boolean">$1</span>');
+    
+    // Null
+    highlighted = highlighted.replace(/:\s*(null)/g, ': <span class="json-null">$1</span>');
+    
+    return highlighted;
+}
+
+// JavaScript Highlighting
+function highlightJavaScript(code) {
+    let highlighted = escapeHtml(code);
+    
+    // Keywords
+    const keywords = ['const', 'let', 'var', 'function', 'return', 'if', 'else', 'for', 'while', 'switch', 'case', 'break', 'continue', 'class', 'import', 'export', 'from', 'async', 'await', 'try', 'catch', 'throw', 'new'];
+    keywords.forEach(keyword => {
+        highlighted = highlighted.replace(new RegExp(`\\b(${keyword})\\b`, 'g'), '<span class="syntax-keyword">$1</span>');
+    });
+    
+    // Strings
+    highlighted = highlighted.replace(/(['"`])(?:(?=(\\?))\2.)*?\1/g, '<span class="syntax-string">$&</span>');
+    
+    // Numbers
+    highlighted = highlighted.replace(/\b(\d+)\b/g, '<span class="syntax-number">$1</span>');
+    
+    // Comments
+    highlighted = highlighted.replace(/(\/\/.*$)/gm, '<span class="syntax-comment">$1</span>');
+    highlighted = highlighted.replace(/(\/\*[\s\S]*?\*\/)/g, '<span class="syntax-comment">$1</span>');
+    
+    // Functions
+    highlighted = highlighted.replace(/\b([a-zA-Z_$][\w$]*)\s*\(/g, '<span class="syntax-function">$1</span>(');
+    
+    return highlighted;
+}
+
+// Python Highlighting
+function highlightPython(code) {
+    let highlighted = escapeHtml(code);
+    
+    // Keywords
+    const keywords = ['def', 'class', 'import', 'from', 'return', 'if', 'elif', 'else', 'for', 'while', 'try', 'except', 'finally', 'with', 'as', 'pass', 'break', 'continue', 'async', 'await', 'lambda', 'yield'];
+    keywords.forEach(keyword => {
+        highlighted = highlighted.replace(new RegExp(`\\b(${keyword})\\b`, 'g'), '<span class="syntax-keyword">$1</span>');
+    });
+    
+    // Built-in functions
+    const builtins = ['print', 'len', 'range', 'str', 'int', 'float', 'list', 'dict', 'set', 'tuple', 'open', 'input'];
+    builtins.forEach(builtin => {
+        highlighted = highlighted.replace(new RegExp(`\\b(${builtin})\\b`, 'g'), '<span class="python-builtin">$1</span>');
+    });
+    
+    // Decorators
+    highlighted = highlighted.replace(/(@\w+)/g, '<span class="python-decorator">$1</span>');
+    
+    // Strings
+    highlighted = highlighted.replace(/(['"])(?:(?=(\\?))\2.)*?\1/g, '<span class="syntax-string">$&</span>');
+    
+    // Comments
+    highlighted = highlighted.replace(/(#.*$)/gm, '<span class="syntax-comment">$1</span>');
+    
+    // self
+    highlighted = highlighted.replace(/\bself\b/g, '<span class="python-self">self</span>');
+    
+    return highlighted;
+}
+
+// YAML Highlighting
+function highlightYAML(code) {
+    let highlighted = code;
+    
+    // Comments
+    highlighted = highlighted.replace(/^(\s*#.*)$/gm, '<span class="config-comment">$1</span>');
+    
+    // Keys (before colon)
+    highlighted = highlighted.replace(/^(\s*)([^#:\n]+)(:)/gm, 
+        '$1<span class="yaml-key">$2</span><span class="config-equals">$3</span>');
+    
+    // List items (-)
+    highlighted = highlighted.replace(/^(\s*)(-)(\s)/gm, 
+        '$1<span class="yaml-dash">$2</span>$3');
+    
+    // Values (after colon)
+    highlighted = highlighted.replace(/:\s*(.+)$/gm, 
+        ': <span class="yaml-value">$1</span>');
+    
+    return highlighted;
+}
+
+// XML/HTML Highlighting
+function highlightXML(code) {
+    let highlighted = escapeHtml(code);
+    
+    // Tags
+    highlighted = highlighted.replace(/(&lt;\/?)([\w-]+)([^&]*?)(&gt;)/g, 
+        '<span class="xml-tag">$1$2</span><span class="xml-attribute">$3</span><span class="xml-tag">$4</span>');
+    
+    // Attributes
+    highlighted = highlighted.replace(/([\w-]+)(=)("([^"]*)"|'([^']*)')/g, 
+        '<span class="xml-attribute">$1</span>$2<span class="xml-value">$3</span>');
+    
+    // Comments
+    highlighted = highlighted.replace(/(&lt;!--[\s\S]*?--&gt;)/g, '<span class="syntax-comment">$1</span>');
+    
+    return highlighted;
+}
+
+// Shell Script Highlighting
+function highlightShell(code) {
+    let highlighted = escapeHtml(code);
+    
+    // Comments
+    highlighted = highlighted.replace(/(^|\s)(#.*)$/gm, '$1<span class="syntax-comment">$2</span>');
+    
+    // Commands
+    const commands = ['echo', 'cd', 'ls', 'mkdir', 'rm', 'cp', 'mv', 'cat', 'grep', 'sed', 'awk', 'chmod', 'chown', 'sudo', 'apt', 'yum', 'systemctl', 'service'];
+    commands.forEach(cmd => {
+        highlighted = highlighted.replace(new RegExp(`\\b(${cmd})\\b`, 'g'), '<span class="shell-command">$1</span>');
+    });
+    
+    // Options (flags)
+    highlighted = highlighted.replace(/\s(-[a-zA-Z]+)\b/g, ' <span class="shell-option">$1</span>');
+    
+    // Strings
+    highlighted = highlighted.replace(/(['"])(?:(?=(\\?))\2.)*?\1/g, '<span class="syntax-string">$&</span>');
+    
+    return highlighted;
+}
+
+// Helper: Escape HTML
+function escapeHtml(text) {
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, m => map[m]);
+}
+
+// ==============================================================
 // QUANTUM VISION THEME SYSTEM
 // ==============================================================
 
@@ -2384,6 +2804,7 @@ function switchDashboardTheme(theme) {
     const classicDesign = document.getElementById('dashboard-classic');
     const quantumDesign = document.getElementById('dashboard-quantum');
     
+    // Switch Dashboard
     if (theme === 'quantum') {
         classicDesign.classList.remove('active');
         quantumDesign.classList.add('active');
@@ -2398,11 +2819,58 @@ function switchDashboardTheme(theme) {
         classicDesign.classList.add('active');
     }
     
+    // Switch Gameserver Section
+    switchGameserverTheme(theme);
+    
+    // Switch File Manager Section
+    switchFileManagerTheme(theme);
+    
     // Save preference to localStorage
     localStorage.setItem('dashboardTheme', theme);
     
     // Refresh stats
     loadSystemStats();
+}
+
+// Switch Gameserver Theme
+function switchGameserverTheme(theme) {
+    const classicGameserver = document.getElementById('gameserver-classic');
+    const quantumGameserver = document.getElementById('gameserver-quantum');
+    
+    if (!classicGameserver || !quantumGameserver) return;
+    
+    if (theme === 'quantum') {
+        classicGameserver.classList.remove('active');
+        quantumGameserver.classList.add('active');
+    } else {
+        quantumGameserver.classList.remove('active');
+        classicGameserver.classList.add('active');
+    }
+    
+    // Reload gameservers to apply new theme
+    loadGameservers();
+}
+
+// Switch File Manager Theme
+function switchFileManagerTheme(theme) {
+    const classicFileManager = document.getElementById('filemanager-classic');
+    const quantumFileManager = document.getElementById('filemanager-quantum');
+    
+    if (!classicFileManager || !quantumFileManager) return;
+    
+    if (theme === 'quantum') {
+        classicFileManager.classList.remove('active');
+        quantumFileManager.classList.add('active');
+    } else {
+        quantumFileManager.classList.remove('active');
+        classicFileManager.classList.add('active');
+    }
+    
+    // Reload file manager to apply new theme
+    const currentSection = document.querySelector('.content-section.active');
+    if (currentSection && currentSection.id === 'filemanager') {
+        loadFileManager(currentPath);
+    }
 }
 
 // Load theme preference from localStorage
